@@ -1,0 +1,9 @@
+# Temporal dynamic config for local development.
+# Increases limits that are too tight for single-node dev use.
+limit.maxIDLength:
+  - value: 255
+    constraints: {}
+
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+    constraints: {}

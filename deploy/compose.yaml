@@ -1,0 +1,141 @@
+# Declarative deploy bundle — Phase A provisional compose manifest.
+#
+# Manifest format (compose vs. Quadlet) stays liquid until Phase E first-
+# deployment observation.  This file uses Docker Compose v3 syntax, runnable
+# via `docker compose` (Apache 2.0) with Podman as the backend:
+#
+#   export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
+#   cd deploy && docker compose up -d
+#
+# Three-way separation enforced throughout:
+#   Software  — OCI images (pinned) + harness built from Dockerfile
+#   Config    — ../config/ bind-mounted :ro into harness pod
+#   Data      — named volumes (business_data, temporal_data, model_cache)
+#
+# Two-Postgres hard rule (Doc 11): `db` and `temporal-postgres` are separate
+# services with separate volumes.  Zero cross-referencing between them.
+
+name: hyperadaptivai
+
+services:
+
+  # ── Persistence pod ────────────────────────────────────────────────────────
+  # Business database: Postgres 17 + pgvector extension.
+  # Phase A: extension only.  Phase B adds the five-primitive CRM schema.
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - business_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Orchestration pod ──────────────────────────────────────────────────────
+  # Temporal's own Postgres — separate from the business database.
+  temporal-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${TEMPORAL_DB_USER}
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD}
+      POSTGRES_DB: temporal
+    volumes:
+      - temporal_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEMPORAL_DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    image: temporalio/auto-setup:1.25.2
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: ${TEMPORAL_DB_USER}
+      POSTGRES_PWD: ${TEMPORAL_DB_PASSWORD}
+      POSTGRES_SEEDS: temporal-postgres
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamicconfig/development.yaml
+    volumes:
+      - ./temporal/dynamicconfig:/etc/temporal/dynamicconfig:ro
+    ports:
+      - "7233:7233"
+    depends_on:
+      temporal-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "localhost:7233"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    restart: unless-stopped
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: "http://localhost:8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      temporal:
+        condition: service_healthy
+
+  # ── Inference pod ──────────────────────────────────────────────────────────
+  # Ollama for single-node model serving.  Phase A: no model pulled.
+  # Phase C fills in the infer contract implementation against this service.
+  ollama:
+    image: ollama/ollama:0.6.6
+    restart: unless-stopped
+    volumes:
+      - model_cache:/root/.ollama
+    ports:
+      - "11434:11434"
+    # GPU passthrough: rootless-vs-GPU tension is a liquid resolved per host
+    # in Phase E.  Uncomment the deploy block on a rootful host with CDI:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ── Harness pod ────────────────────────────────────────────────────────────
+  # Proprietary harness: Temporal workers running workflow + activity code.
+  # Config mounted :ro; data in named volumes, never in the image.
+  harness:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TEMPORAL_ADDRESS: ${TEMPORAL_ADDRESS}
+      TEMPORAL_TASK_QUEUE: ${TEMPORAL_TASK_QUEUE}
+      TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE}
+    volumes:
+      - ../config:/app/config:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+
+volumes:
+  business_data:    # business Postgres + pgvector — member sovereign data
+  temporal_data:    # Temporal internal Postgres — never co-mingled with business_data
+  model_cache:      # Ollama model weights — pulled at deploy, not redistributed
