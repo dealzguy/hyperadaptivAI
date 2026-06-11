@@ -1,0 +1,20 @@
+# Harness pod — Phase A walking skeleton
+# Base: python:3.12-slim (PSF license — green tier)
+# Config is mounted at runtime (/app/config). Never baked in.
+# Secrets arrive via env_file. Never baked in.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install dependencies first (layer cache)
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e .
+
+# Copy harness package
+COPY harness/ harness/
+
+# Config directory — populated by compose volume mount at runtime
+RUN mkdir -p /app/config
+
+CMD ["python", "-m", "harness.worker"]

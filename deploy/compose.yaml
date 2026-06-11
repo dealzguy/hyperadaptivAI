@@ -1,0 +1,96 @@
+# HyperadaptivAI — Phase A provisional deploy bundle
+# Quadlet format stays liquid until Phase E deployment observation (doc 13).
+# License tiers: all images MIT/Apache-2.0/PostgreSQL (green tier per doc 08).
+
+services:
+
+  # ── PERSISTENCE POD ──────────────────────────────────────────────────────
+  # Business Postgres + pgvector. Temporal NEVER uses this instance.
+  postgres-business:
+    image: pgvector/pgvector:pg16       # MIT/PostgreSQL — green tier
+    env_file: secrets/secrets.env       # POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+    volumes:
+      - data-business:/var/lib/postgresql/data   # data — never in image
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── ORCHESTRATION POD ────────────────────────────────────────────────────
+  # Temporal's own dedicated Postgres. Business data NEVER touches this instance.
+  postgres-temporal:
+    image: postgres:16.3                # PostgreSQL license — green tier
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    volumes:
+      - data-temporal-db:/var/lib/postgresql/data   # data — never in image
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  temporal:
+    image: temporalio/auto-setup:1.27.2  # MIT — green tier
+    depends_on:
+      postgres-temporal:
+        condition: service_healthy
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      POSTGRES_SEEDS: postgres-temporal
+    ports:
+      - "127.0.0.1:7233:7233"
+    restart: unless-stopped
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2          # MIT — green tier
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+  # ── INFERENCE POD ────────────────────────────────────────────────────────
+  # Ollama behind the infer contract. Models pulled at deploy time (doc 08: pull, don't redistribute).
+  ollama:
+    image: ollama/ollama:0.6.5           # MIT — green tier
+    volumes:
+      - data-ollama:/root/.ollama        # model weights — data, never in image
+    ports:
+      - "127.0.0.1:11434:11434"
+    restart: unless-stopped
+
+  # ── HARNESS POD ──────────────────────────────────────────────────────────
+  # Temporal worker running the walking skeleton. Config mounted; secrets via env_file.
+  harness-worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile.harness
+    depends_on:
+      - temporal
+    env_file:
+      - secrets/secrets.env             # secrets — never baked in
+    environment:
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_TASK_QUEUE: skeleton-queue
+      LOG_LEVEL: INFO
+    volumes:
+      - ./config:/app/config:ro         # config — mounted read-only
+    restart: unless-stopped
+
+# Named volumes — data tier. Never fuse with software or config.
+volumes:
+  data-business:       # business Postgres data
+  data-temporal-db:    # Temporal's own Postgres data
+  data-ollama:         # Ollama pulled model weights
