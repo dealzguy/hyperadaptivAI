@@ -1,6 +1,6 @@
 .PHONY: up down test logs shell licenses help
 
-COMPOSE = cd deploy && docker compose
+COMPOSE = cd deploy && podman compose
 
 # Start all services (persistence, orchestration, inference, harness).
 up:

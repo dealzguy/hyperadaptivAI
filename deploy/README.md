@@ -3,17 +3,30 @@
 This directory is the declarative deploy bundle for Phase A.  `compose.yaml`
 describes four pods; `make up` from the repo root brings them all up.
 
+`compose.yaml` uses standard Docker Compose v3 syntax, which Podman handles
+via `podman compose` (Podman 4.7+) or `podman-compose` (pip-installable).
+
 ---
 
 ## Prerequisites
 
 | Requirement | Verified by |
 |-------------|-------------|
-| Podman 5.x installed | `podman --version` |
-| Docker Compose V2 plugin (Apache 2.0) | `docker compose version` |
-| Podman socket enabled | `systemctl --user enable --now podman.socket` |
-| `DOCKER_HOST` pointed at Podman socket | `export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` |
+| Podman 4.7+ installed | `podman --version` |
+| Compose support | `podman compose version` — if missing, `pip install podman-compose` |
 | `.env` created from `.env.example` | `cp deploy/.env.example deploy/.env && $EDITOR deploy/.env` |
+
+**Note on `podman compose` vs `podman-compose`:**
+Podman 4.7+ ships `podman compose` as a built-in subcommand.  It delegates
+to `podman-compose` if that package is installed.  Install it once:
+
+```bash
+pip install podman-compose
+```
+
+`podman-compose` is GPL-2.0.  It is a dev-side deployment tool only — never
+linked into the harness, never shipped in the product.  This is the "separate
+process" case from Doc 8; the GPL does not propagate into the harness.
 
 ---
 
@@ -21,7 +34,7 @@ describes four pods; `make up` from the repo root brings them all up.
 
 ```bash
 # From repo root:
-export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
+cp deploy/.env.example deploy/.env   # then edit passwords
 make up
 ```
 
@@ -30,7 +43,7 @@ may take ~30 seconds to become healthy on first start (schema auto-setup).
 
 Verify:
 ```bash
-docker compose -f deploy/compose.yaml ps
+podman compose -f deploy/compose.yaml ps
 ```
 
 All services should show `healthy` or `running`.
@@ -58,7 +71,7 @@ Temporal):
 
 ```bash
 export TEMPORAL_ADDRESS=localhost:7233
-uv run python -m harness.worker &
+uv run --extra dev python -m harness.worker &
 WORKER_PID=$!
 echo "Worker PID: $WORKER_PID"
 ```
@@ -86,7 +99,7 @@ workflow `durability-demo` in **Running** state with no available workers.
 **Step 5.** Restart the worker:
 
 ```bash
-uv run python -m harness.worker &
+uv run --extra dev python -m harness.worker &
 ```
 
 **Step 6.** The workflow resumes from its Temporal event history and completes.
@@ -106,7 +119,7 @@ the restart — deterministic replay.  This is the exit-gate evidence.
 ## Three-way separation — inspection
 
 ```bash
-docker compose -f deploy/compose.yaml config | grep -A3 'volumes:'
+podman compose -f deploy/compose.yaml config | grep -A3 'volumes:'
 ```
 
 Confirms: named volumes (`business_data`, `temporal_data`, `model_cache`) are
@@ -120,5 +133,5 @@ three never fuse.
 ```bash
 make down
 # Data volumes are preserved.  To remove volumes too:
-# docker compose -f deploy/compose.yaml down -v
+# podman compose -f deploy/compose.yaml down -v
 ```

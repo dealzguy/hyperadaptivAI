@@ -68,8 +68,8 @@ Record confirmed versions in the table below.
 | `pytest-asyncio` | `>=0.23` | _from uv.lock_ | Apache 2.0 | Green | |
 | `pip-licenses` | `>=5.0` | _from uv.lock_ | MIT | Green | `make licenses` standing audit |
 | `uv` (package manager) | latest stable | _confirm_ | MIT | Green | `uv.lock` committed |
-| Podman (runtime) | system 5.x | _confirm_ | Apache 2.0 | Green | Not a Python dep; system-installed |
-| `docker compose` CLI (V2) | system-installed | _confirm_ | Apache 2.0 | Green | Used instead of `podman-compose` (GPL-2.0) |
+| Podman (runtime) | system 4.7+ | _confirm_ | Apache 2.0 | Green | Not a Python dep; system-installed |
+| `podman-compose` (dev deploy tool) | `>=1.2` via pip | _confirm_ | GPL-2.0 | Dev-only | CLI tool; never linked into harness; not distributed in product — "separate process" case per Doc 8 |
 
 **SDK/server pairing note:** Temporal's Python SDK release notes specify the
 minimum compatible server version.  At integration, confirm `temporalio 1.7.x`
