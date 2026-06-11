@@ -23,9 +23,11 @@ class HelloWorkflow:
         if workflow.patched("hello-v1"):
             pass  # current code path
 
+        # 10s: 5× the activity's sleep, and short enough that the retry after
+        # a worker kill fires quickly in the durability demonstration.
         result = await workflow.execute_activity(
             greet_activity,
             name,
-            start_to_close_timeout=timedelta(seconds=30),
+            start_to_close_timeout=timedelta(seconds=10),
         )
         return result

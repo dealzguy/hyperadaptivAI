@@ -1,11 +1,10 @@
 # Declarative deploy bundle — Phase A provisional compose manifest.
 #
 # Manifest format (compose vs. Quadlet) stays liquid until Phase E first-
-# deployment observation.  This file uses Docker Compose v3 syntax, runnable
-# via `docker compose` (Apache 2.0) with Podman as the backend:
+# deployment observation.  This file uses standard Compose v3 syntax, run
+# natively with Podman:
 #
-#   export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
-#   cd deploy && docker compose up -d
+#   cd deploy && podman compose up -d     # Podman 4.7+ delegates to podman-compose
 #
 # Three-way separation enforced throughout:
 #   Software  — OCI images (pinned) + harness built from Dockerfile
@@ -14,6 +13,14 @@
 #
 # Two-Postgres hard rule (Doc 11): `db` and `temporal-postgres` are separate
 # services with separate volumes.  Zero cross-referencing between them.
+#
+# Startup ordering: short-form depends_on only — long-form health conditions
+# have patchy support across podman-compose versions.  temporal's auto-setup
+# entrypoint waits for its own database; the harness worker retries its
+# Temporal connection at startup (src/harness/worker.py).
+#
+# Secrets: interpolated per service from deploy/.env (template: .env.example).
+# No env_file blanket injection — each pod receives only its own credentials.
 
 name: hyperadaptivai
 
@@ -25,7 +32,6 @@ services:
   db:
     image: pgvector/pgvector:pg17
     restart: unless-stopped
-    env_file: .env
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -44,7 +50,6 @@ services:
   temporal-postgres:
     image: postgres:17-alpine
     restart: unless-stopped
-    env_file: .env
     environment:
       POSTGRES_USER: ${TEMPORAL_DB_USER}
       POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD}
@@ -57,10 +62,12 @@ services:
       timeout: 5s
       retries: 10
 
+  # auto-setup's entrypoint waits for its database internally; no healthcheck
+  # here — the `temporal` CLI is not guaranteed inside the auto-setup image,
+  # and a failing healthcheck would wedge dependent services.
   temporal:
     image: temporalio/auto-setup:1.25.2
     restart: unless-stopped
-    env_file: .env
     environment:
       DB: postgres12
       DB_PORT: 5432
@@ -73,14 +80,7 @@ services:
     ports:
       - "7233:7233"
     depends_on:
-      temporal-postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "localhost:7233"]
-      interval: 10s
-      timeout: 10s
-      retries: 15
-      start_period: 30s
+      - temporal-postgres
 
   temporal-ui:
     image: temporalio/ui:2.31.2
@@ -91,8 +91,7 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      temporal:
-        condition: service_healthy
+      - temporal
 
   # ── Inference pod ──────────────────────────────────────────────────────────
   # Ollama for single-node model serving.  Phase A: no model pulled.
@@ -122,7 +121,6 @@ services:
       context: ..
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: .env
     environment:
       TEMPORAL_ADDRESS: ${TEMPORAL_ADDRESS}
       TEMPORAL_TASK_QUEUE: ${TEMPORAL_TASK_QUEUE}
@@ -130,10 +128,8 @@ services:
     volumes:
       - ../config:/app/config:ro
     depends_on:
-      db:
-        condition: service_healthy
-      temporal:
-        condition: service_healthy
+      - db
+      - temporal
 
 volumes:
   business_data:    # business Postgres + pgvector — member sovereign data

@@ -1,4 +1,4 @@
-.PHONY: up down test logs shell licenses help
+.PHONY: up down ps test logs shell licenses help
 
 COMPOSE = cd deploy && podman compose
 
@@ -9,6 +9,10 @@ up:
 # Stop all services (data volumes are preserved).
 down:
 	$(COMPOSE) down
+
+# List services and their state.
+ps:
+	$(COMPOSE) ps
 
 # Run the full test suite (no containers required).
 test:

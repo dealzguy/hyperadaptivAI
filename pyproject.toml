@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "harness"
 version = "0.1.0"
 description = "HyperadaptivAI — Temporal-based agentic harness"
+license = {text = "Proprietary"}
 requires-python = ">=3.12"
 dependencies = [
     "temporalio>=1.7.0,<2.0",

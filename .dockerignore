@@ -1,0 +1,16 @@
+# Keep the image build context minimal — only pyproject.toml, uv.lock, and
+# src/ are copied; everything else stays out of the context upload.
+.git
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+tests/
+docs/
+deploy/
+config/
+Makefile
+.env
+*.env

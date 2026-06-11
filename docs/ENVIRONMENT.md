@@ -70,6 +70,7 @@ Record confirmed versions in the table below.
 | `uv` (package manager) | latest stable | _confirm_ | MIT | Green | `uv.lock` committed |
 | Podman (runtime) | system 4.7+ | _confirm_ | Apache 2.0 | Green | Not a Python dep; system-installed |
 | `podman-compose` (dev deploy tool) | `>=1.2` via pip | _confirm_ | GPL-2.0 | Dev-only | CLI tool; never linked into harness; not distributed in product — "separate process" case per Doc 8 |
+| Temporal CLI (host tool) | latest stable | _confirm_ | MIT | Green | Verification tool only (trigger/inspect workflows); not part of the bundle |
 
 **SDK/server pairing note:** Temporal's Python SDK release notes specify the
 minimum compatible server version.  At integration, confirm `temporalio 1.7.x`
@@ -86,9 +87,9 @@ Commercially-clean families for Phase C: Qwen 3.x (Apache 2.0), Gemma 4
 ## Host assumptions
 
 - Ubuntu 24.04 LTS (hardened per Doc 5 host-prep playbook; playbook is Phase B+)
-- Podman 5.x, rootless preferred
-- Docker Compose V2 plugin (Apache 2.0)
-- `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock` for compose
+- Podman 4.7+, rootless preferred
+- `podman-compose` via pip (Podman's `podman compose` subcommand delegates to it)
+- Temporal CLI on the host, for triggering/inspecting workflows during verification
 - GPU passthrough: **liquid** — rootless-vs-GPU tension resolved per host in
   Phase E.  See `deploy/compose.yaml` GPU block (commented out).
 
