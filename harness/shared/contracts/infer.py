@@ -4,7 +4,10 @@ Contract: infer(InferInput) -> InferResult
 Settled constraint (doc 12 §2): nothing above this line names a model.
 The implementation lives in harness/shared/inference/litellm_provider.py.
 
-_guard_model_id: allowlist-based — ONLY "ollama/<name>" is permitted.
+_guard_model_id: allowlist-based — ONLY "ollama/<name>" (completion endpoint)
+OR "ollama_chat/<name>" (chat-completions endpoint) is permitted.
+See docs/CONFIG-BUNDLE-SPEC.md §model_policy for normative grammar.
+Liquid resolution recorded in docs/LIQUID-RESOLUTIONS.md ("infer guard prefix set").
 Previous denylist (CLOUD_MODEL_PREFIXES) was bypassable via provider-prefixed
 LiteLLM IDs like "openai/gpt-4o", "anthropic/claude-3-haiku", "groq/...", etc.
 Allowlist closes the entire class in one check and does not enumerate cloud
@@ -26,7 +29,8 @@ class InferInput:
     tools: list[dict[str, Any]] = field(default_factory=list)
     policy: dict[str, Any] = field(default_factory=dict)  # max_tokens, temperature, …
     response_format: dict[str, Any] = field(default_factory=dict)  # structured outputs; {} = none
-    # TODO(liquid: policy schema — Phase D config-bundle spec formalizes)
+    # TODO(liquid: policy schema) RESOLVED — see docs/CONFIG-BUNDLE-SPEC.md §policy.
+    # Known keys: max_tokens (int>0), temperature (float[0,2]); open for append.
 
 
 @dataclass
@@ -41,15 +45,18 @@ class InferResult:
 def _guard_model_id(model_id: str) -> None:
     """Raise ValueError if model_id is not a local Ollama model.
 
-    Allowlist: only "ollama/<name>" is accepted. Any other prefix (including
-    LiteLLM provider-prefixed IDs like openai/, anthropic/, groq/, azure/,
-    vertex_ai/, bedrock/, xai/, or bare names like gpt-4) is rejected.
+    Allowlist: "ollama/<name>" (generation endpoint) and "ollama_chat/<name>"
+    (chat completions endpoint — required for structured outputs, used in config
+    bundles as model_policy.decide and model_policy.escalate).
+    Both prefixes route exclusively to local Ollama — cloud isolation is preserved.
+    Any other prefix (openai/, anthropic/, groq/, azure/, vertex_ai/, bedrock/,
+    xai/, bare gpt-4, etc.) is rejected.
     """
-    if not model_id.startswith("ollama/"):
+    if not model_id.startswith(("ollama/", "ollama_chat/")):
         raise ValueError(
             f"model_id {model_id!r} is not a local Ollama model. "
             "All inference must route through local Ollama. "
-            "Use 'ollama/<model-name>' format (e.g. 'ollama/llama3.2:3b')."
+            "Use 'ollama/<name>' or 'ollama_chat/<name>' format."
         )
 
 
@@ -62,7 +69,8 @@ def validate_policy(policy: dict[str, Any]) -> None:
 
     Unknown keys are warned about but not rejected, preserving the open-set
     invariant (Invariant 3) while preventing silent misconfiguration.
-    TODO(liquid: policy schema — Phase D config-bundle spec formalizes)
+    TODO(liquid: policy schema) RESOLVED — see docs/CONFIG-BUNDLE-SPEC.md §policy.
+    Known keys: max_tokens (int>0), temperature (float[0,2]); open for append.
     """
     known_keys = {"max_tokens", "temperature"}
     for key, value in policy.items():

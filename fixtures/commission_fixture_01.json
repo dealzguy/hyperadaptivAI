@@ -1,0 +1,96 @@
+{
+  "operator_id": "meridian-realty-v0",
+  "business": {
+    "name": "Meridian Realty Partners",
+    "what_is_sold": "residential property representation",
+    "sold_to_whom": "home buyers and sellers in the Meridian metro",
+    "revenue_concentration": "commission on closed transactions; top 20% of clients produce ~65% of revenue",
+    "exceptions": [
+      "pre-approval required before showing properties above $750k",
+      "relocation buyers need a dedicated coordinator assigned within 24h",
+      "investors (3+ properties) skip the standard qualifying flow and go straight to portfolio review"
+    ]
+  },
+  "lifecycle": {
+    "stages": [
+      "new",
+      "qualifying",
+      "qualified",
+      "disqualified",
+      "first_follow_up_done"
+    ]
+  },
+  "channels": ["web_form"],
+  "task_types": [
+    "first_follow_up",
+    "agent_gate_approval",
+    "agent_escalation"
+  ],
+  "tools": [
+    {
+      "name": "record_event",
+      "consequence_class": "reversible",
+      "rationale": "Appending a fact to the audit log; fully undoable by appending a counter-event"
+    },
+    {
+      "name": "transition_state",
+      "consequence_class": "compensable",
+      "rationale": "State change has external visibility (agent notified); can be compensated by reverse transition with explanation"
+    },
+    {
+      "name": "assign_task",
+      "consequence_class": "compensable",
+      "rationale": "Creates an obligation for a team member; can be compensated by cancelling and reassigning with explanation"
+    }
+  ],
+  "calculations": [
+    {
+      "rule_id": "lead-score-v0",
+      "description": "Weighted lead score from budget and timeline signals. Used to decide qualify vs disqualify.",
+      "expression": "score = 2*budget_match + 1*timeline_match",
+      "test_vectors": [
+        {"inputs": {"budget_match": 1, "timeline_match": 1}, "expected": 3},
+        {"inputs": {"budget_match": 0, "timeline_match": 1}, "expected": 1},
+        {"inputs": {"budget_match": 1, "timeline_match": 0}, "expected": 2},
+        {"inputs": {"budget_match": 0, "timeline_match": 0}, "expected": 0}
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "card_id": "card-01",
+      "title": "Clean qualify — buyer with pre-approval",
+      "narrative": "A buyer submits via web form with a pre-approval letter attached. Agent reviews income docs and timeline. Budget match: 1, timeline match: 1. Score 3 >= qualify threshold.",
+      "expected_stages": ["new", "qualifying", "qualified", "first_follow_up_done"],
+      "expected_outcome": "first_follow_up_done"
+    },
+    {
+      "card_id": "card-02",
+      "title": "Disqualify — no budget match",
+      "narrative": "Buyer requests a $900k home but has no pre-approval and self-reported income is insufficient. Budget match: 0, timeline match: 1. Score 1 < qualify threshold.",
+      "expected_stages": ["new", "qualifying", "disqualified"],
+      "expected_outcome": "disqualified"
+    },
+    {
+      "card_id": "card-03",
+      "title": "Stale lead requalified",
+      "narrative": "A lead that went cold (entered 'qualifying', no response for 14 days) is re-engaged after receiving a new pre-approval. Agent records a requalification event and re-evaluates.",
+      "expected_stages": ["new", "qualifying", "qualifying", "qualified", "first_follow_up_done"],
+      "expected_outcome": "first_follow_up_done"
+    },
+    {
+      "card_id": "card-04",
+      "title": "Escalation on low-confidence",
+      "narrative": "A buyer has mixed signals: budget borderline, timeline vague. Agent confidence falls below 0.5 threshold. Escalates to human task for agent review before proceeding.",
+      "expected_stages": ["new", "qualifying", "qualifying"],
+      "expected_outcome": "qualifying"
+    },
+    {
+      "card_id": "card-05",
+      "title": "Fast-track investor exception",
+      "narrative": "Buyer discloses ownership of 4 existing properties on the intake form. Per exception rule, this is flagged for portfolio review track. Agent records exception event and assigns agent_escalation task.",
+      "expected_stages": ["new", "qualifying", "qualified"],
+      "expected_outcome": "qualified"
+    }
+  ]
+}

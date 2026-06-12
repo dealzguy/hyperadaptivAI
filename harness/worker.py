@@ -1,8 +1,10 @@
-"""Temporal worker entry point — Phase C agent loop.
+"""Temporal worker entry point — Phase D commissioning + Phase C agent loop.
 
 Registers the Phase A walking skeleton, all Phase B verb activities,
-the LeadIntakeWorkflow, and the Phase C AgentLoopWorkflow with its
-four activity primitives (situate/decide/act/record) and budget check.
+the LeadIntakeWorkflow, the Phase C AgentLoopWorkflow with its
+four activity primitives (situate/decide/act/record) and budget check,
+and the Phase D CommissioningWorkflow with its five activities
+(interview/dissect/construct/validate/promote).
 
 Pool is built inside async main() on the running event loop (never at
 import time; never bridged from a sync thread). Schema bootstrap is a
@@ -43,6 +45,18 @@ from harness.operations.activities.act import act_activity
 from harness.operations.activities.record import record_activity
 from harness.operations.activities.budget import check_budget
 
+# Phase D: commissioning workflow + five activities.
+# Co-registered on skeleton-queue — commissioning runs once per business;
+# load profile is negligible and a separate queue adds deploy complexity
+# with no Phase D gate benefit.
+# TODO(liquid: dedicated commissioning task queue — Phase E deploy hardening specifies)
+from harness.commissioning.workflows.commission import CommissioningWorkflow
+from harness.commissioning.activities.interview import interview_activity
+from harness.commissioning.activities.dissect import dissect_activity
+from harness.commissioning.activities.construct import construct_activity
+from harness.commissioning.activities.validate import validate_activity
+from harness.commissioning.activities.promote import promote_activity
+
 from harness.shared.persistence.dsn import build_dsn
 from harness.shared.persistence.pool import close_pool, create_pool
 
@@ -70,7 +84,12 @@ async def main() -> None:
             worker = Worker(
                 client,
                 task_queue=task_queue,
-                workflows=[HelloWorkflow, LeadIntakeWorkflow, AgentLoopWorkflow],
+                workflows=[
+                    HelloWorkflow,
+                    LeadIntakeWorkflow,
+                    AgentLoopWorkflow,
+                    CommissioningWorkflow,   # Phase D
+                ],
                 activities=[
                     hello_activity,
                     # Phase B CRM verbs
@@ -85,6 +104,12 @@ async def main() -> None:
                     act_activity,
                     record_activity,
                     check_budget,
+                    # Phase D commissioning activities
+                    interview_activity,
+                    dissect_activity,
+                    construct_activity,
+                    validate_activity,
+                    promote_activity,
                 ],
                 activity_executor=activity_executor,
             )

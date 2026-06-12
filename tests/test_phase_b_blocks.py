@@ -335,7 +335,7 @@ async def test_assign_task_golden(db_conn, test_key_prefix):
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], max_examples=10)
-@given(task_type=st.text(min_size=1, max_size=20, alphabet=st.characters(blacklist_characters="\x00")))
+@given(task_type=st.text(min_size=1, max_size=20, alphabet=st.characters(blacklist_characters="\x00", blacklist_categories={"Cs"})))
 async def test_assign_task_property_idempotency(db_conn, test_key_prefix, task_type):
     """Property: same task key → exactly one row for that key."""
     from harness.shared.crm.verbs import assign_task, create_entity
