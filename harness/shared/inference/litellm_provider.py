@@ -1,4 +1,8 @@
-"""LiteLLM-backed infer provider — routes to local Ollama only.
+"""LiteLLM-backed infer provider — routes to a configured external API provider via LiteLLM.
+
+Provider selected by model_id prefix; API key read from env (e.g. ANTHROPIC_API_KEY
+for anthropic/ models). Optional INFER_API_BASE for self-hosted or OpenAI-compatible
+endpoints.
 
 litellm.num_retries is set to 0 here (module import time) so the value is
 established before any completion call is made.  The canonical place to
@@ -23,22 +27,20 @@ litellm.num_retries = 0
 
 logger = logging.getLogger(__name__)
 
-# OLLAMA_BASE_URL env var is set by compose.yaml for the harness-worker service.
-# Default is localhost for local dev (outside compose).
-OLLAMA_BASE_URL: str = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-
-
 async def infer(inp: InferInput) -> InferResult:
-    """Call Ollama via LiteLLM.  Raises ValueError for cloud model IDs."""
+    """Call the configured API provider via LiteLLM.  Raises ValueError for unconfigured model IDs."""
     _guard_model_id(inp.model_id)
     validate_policy(inp.policy)
 
     kwargs: dict = {
         "model": inp.model_id,
         "messages": inp.messages,
-        "api_base": OLLAMA_BASE_URL,
         "num_retries": 0,
     }
+
+    infer_api_base = os.environ.get("INFER_API_BASE", "")
+    if infer_api_base:
+        kwargs["api_base"] = infer_api_base
 
     if inp.policy.get("max_tokens"):
         kwargs["max_tokens"] = inp.policy["max_tokens"]
@@ -50,7 +52,7 @@ async def infer(inp: InferInput) -> InferResult:
     if inp.response_format:
         kwargs["response_format"] = inp.response_format
 
-    logger.debug("infer: model=%s base=%s", inp.model_id, OLLAMA_BASE_URL)
+    logger.debug("infer: model=%s api_base=%s", inp.model_id, kwargs.get("api_base", ""))
     resp = await litellm.acompletion(**kwargs)
 
     choice = resp.choices[0]

@@ -56,7 +56,7 @@ async def decide_activity(inp: DecideInput) -> DecideResult:
     STUB MODE (INFER_STUB=1): returns the first tool in allowlist without a
     model call — used for deterministic loop tests.
 
-    LIVE MODE: calls infer() → LiteLLM → local Ollama only. model_id is
+    LIVE MODE: calls infer() → LiteLLM → configured API provider. model_id is
     validated by _guard_model_id inside litellm_provider (allowlist enforced).
     """
     if os.environ.get("INFER_STUB") == "1":

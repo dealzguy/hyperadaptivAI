@@ -107,3 +107,13 @@ CREATE TABLE IF NOT EXISTS knowledge_doc (
     created_at       timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS knowledge_doc_embedding ON knowledge_doc USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
+
+-- Gate approval queue: fast lookup of open approval tasks (Phase E W1)
+CREATE INDEX IF NOT EXISTS idx_task_gate_approval_open
+    ON task (created_at DESC)
+    WHERE type = 'agent_gate_approval' AND status = 'open';
+
+-- Flow-pause: fast lookup of latest pause state for a flow class (Phase E W5)
+CREATE INDEX IF NOT EXISTS idx_state_flow_pause
+    ON state (machine, seq DESC)
+    WHERE machine LIKE 'flow_pause:%';

@@ -203,3 +203,15 @@ Set `INFER_STUB=1` in the environment to run the full loop deterministically wit
   `tokens_used=0`, and `rationale="stub"`.
 - All other activities (situate, act, record, budget) run normally against the live DB.
 - Exit gate tests use this mode with the time-skipping workflow environment.
+
+---
+
+## Workflow versioning (Phase E)
+
+[PROD] Logic changes in `AgentLoopWorkflow` ship via `workflow.patched()` (Temporal versioning API).
+[PROD] In-flight workflows replay correctly on the old path; new workflows take the new path.
+
+Active patches:
+- `consequence-gate-v1` (Phase E): human-approval gate between DECIDE and ACT.
+
+See `docs/VERSIONING.md` for the `patched()` → `deprecate_patch()` → remove discipline.

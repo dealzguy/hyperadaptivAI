@@ -26,9 +26,19 @@ _SCHEMA_SQL = pathlib.Path(__file__).parent / "schema.sql"
 
 async def apply_schema(pool: object) -> None:
     """Execute schema.sql against the given pool. Idempotent."""
+    from harness.shared.persistence.constants import SYSTEM_ENTITY_ID
     sql = _SCHEMA_SQL.read_text()
     async with pool.acquire() as conn:
         await conn.execute(sql)
+        # Create the system entity once, idempotently (W3: system-level state rows attach here)
+        await conn.execute(
+            """
+            INSERT INTO entity (id, type, attributes, idempotency_key)
+            VALUES ($1::uuid, 'system', '{"name": "harness"}', 'system:harness:v1')
+            ON CONFLICT (idempotency_key) DO NOTHING
+            """,
+            SYSTEM_ENTITY_ID,
+        )
     logger.info("Schema applied from %s", _SCHEMA_SQL.name)
 
 

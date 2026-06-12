@@ -61,16 +61,6 @@ services:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped
 
-  # ── INFERENCE POD ────────────────────────────────────────────────────────
-  # Ollama behind the infer contract. Models pulled at deploy time (doc 08: pull, don't redistribute).
-  ollama:
-    image: docker.io/ollama/ollama:0.6.5           # MIT — green tier
-    volumes:
-      - data-ollama:/root/.ollama        # model weights — data, never in image
-    ports:
-      - "127.0.0.1:11434:11434"
-    restart: unless-stopped
-
   # ── HARNESS POD ──────────────────────────────────────────────────────────
   # Temporal worker — Phase B: CRM spine + verb activities + LeadIntakeWorkflow.
   # DB_HOST=postgres-business enforces the two-Postgres hard rule; build_dsn()
@@ -85,13 +75,15 @@ services:
       postgres-business:
         condition: service_healthy     # wait for DB readiness before worker starts
     env_file:
-      - secrets/secrets.env             # POSTGRES_USER / PASSWORD / DB — secrets
+      - secrets/secrets.env             # POSTGRES_USER / PASSWORD / DB + provider API keys
     environment:
       TEMPORAL_HOST: temporal:7233
       TEMPORAL_TASK_QUEUE: skeleton-queue
       LOG_LEVEL: INFO
       DB_HOST: postgres-business        # config (not secret) — two-DB guard reads this
       DB_PORT: "5432"
+      # INFER_ALLOWED_PREFIXES: anthropic/   # comma-separated; defaults to anthropic/
+      # INFER_API_BASE:                       # optional; for self-hosted / OpenAI-compatible endpoints
     volumes:
       - ./config:/app/config:ro         # config — mounted read-only
     restart: unless-stopped
@@ -100,4 +92,3 @@ services:
 volumes:
   data-business:       # business Postgres data
   data-temporal-db:    # Temporal's own Postgres data
-  data-ollama:         # Ollama pulled model weights

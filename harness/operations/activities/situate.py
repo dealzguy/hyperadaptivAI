@@ -14,6 +14,7 @@ from harness.shared.capability.registry import register
 from harness.shared.contracts.block import Block, ConsequenceClass
 from harness.shared.contracts.memory import ReadDirectiveInput, ReadEpisodicInput
 from harness.shared.memory.postgres_memory import PostgresMemoryProvider
+from harness.shared.persistence.constants import SYSTEM_ENTITY_ID
 from harness.shared.persistence.pool import get_pool
 
 logger = logging.getLogger(__name__)
@@ -28,12 +29,14 @@ class SituateInput:
     entity_id: str
     step_number: int
     idempotency_key: str
+    flow_id: str = ""  # W5: flow-class pause check; empty = skip
 
 
 @dataclass
 class SituateResult:
     context_dict: dict
     tokens_used: int
+    flow_paused: bool = False  # W5: True when flow-class is in 'paused' state
 
 
 @activity.defn
@@ -76,13 +79,25 @@ async def situate_activity(inp: SituateInput) -> SituateResult:
         "knowledge": [],  # Phase D: query_knowledge will populate this
     }
 
+    # W5: Check flow-class pause state. Uses the pool directly (mem has no state query).
+    flow_paused = False
+    if inp.flow_id:
+        machine = f"flow_pause:{inp.flow_id}"
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT position FROM state WHERE entity_id = $1::uuid AND machine = $2 ORDER BY seq DESC LIMIT 1",
+                SYSTEM_ENTITY_ID,
+                machine,
+            )
+        flow_paused = row is not None and row["position"] == "paused"
+
     logger.info(
-        "situate_activity agent=%s step=%d entity=%s history_rows=%d directive_found=%s",
+        "situate_activity agent=%s step=%d entity=%s history_rows=%d directive_found=%s flow_paused=%s",
         inp.agent_id, inp.step_number, inp.entity_id,
-        len(recent_history), directive_out.found,
+        len(recent_history), directive_out.found, flow_paused,
     )
 
-    return SituateResult(context_dict=context_dict, tokens_used=0)
+    return SituateResult(context_dict=context_dict, tokens_used=0, flow_paused=flow_paused)
 
 
 register(Block(

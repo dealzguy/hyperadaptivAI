@@ -19,9 +19,9 @@ Unit tests (no live stack required, INFER_STUB=1):
   - test_construct_gates_derived_from_taxonomy
   - test_validate_vector_reproduction_exact
   - test_validate_fails_on_wrong_consequence_class
-  - test_guard_accepts_ollama_chat
-  - test_guard_rejects_cloud_prefixes
-  - test_guard_change_does_not_break_existing_ollama_prefix
+  - test_guard_accepts_anthropic_prefix
+  - test_guard_accepts_configured_prefix_via_env
+  - test_guard_rejects_unknown_prefixes
 
 Stack required for integration tests:
   temporal server start-dev
@@ -60,28 +60,34 @@ _TASK_QUEUE = os.environ.get("TEMPORAL_TASK_QUEUE", "skeleton-queue")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_guard_accepts_ollama_chat():
-    """Guard updated to accept ollama_chat/ prefix (Step 1 fix, now committed)."""
+def test_guard_accepts_anthropic_prefix():
+    """Guard accepts anthropic/ prefix (default allowlist for initial testing)."""
     from harness.shared.contracts.infer import _guard_model_id
     # Should not raise
-    _guard_model_id("ollama_chat/llama3.2:3b")
-    _guard_model_id("ollama_chat/llama3.1:8b")
+    _guard_model_id("anthropic/claude-sonnet-4-6")
+    _guard_model_id("anthropic/claude-3-5-haiku-20241022")
 
 
-def test_guard_change_does_not_break_existing_ollama_prefix():
-    """Guard still accepts ollama/ (completion endpoint) after the prefix fix."""
+def test_guard_accepts_configured_prefix_via_env(monkeypatch):
+    """Guard accepts additional provider prefixes when INFER_ALLOWED_PREFIXES is set."""
+    import importlib
+    import harness.shared.contracts.infer as infer_mod
+    monkeypatch.setenv("INFER_ALLOWED_PREFIXES", "openai/,groq/")
+    # Force re-read of env (the helper reads env each call, so no reimport needed)
     from harness.shared.contracts.infer import _guard_model_id
-    _guard_model_id("ollama/llama3.2:3b")
+    # These should not raise under the configured allowlist
+    _guard_model_id("openai/gpt-4o-mini")
+    _guard_model_id("groq/llama-3.1-8b-instant")
 
 
 @pytest.mark.parametrize("bad_model_id", [
-    "openai/gpt-4o",
-    "anthropic/claude-3",
+    "evil/x",
     "gpt-4",
     "ollama-evil/x",
+    "bare-model",
 ])
-def test_guard_rejects_cloud_prefixes(bad_model_id: str):
-    """Guard rejects every cloud provider prefix without enumerating them."""
+def test_guard_rejects_unknown_prefixes(bad_model_id: str):
+    """Guard rejects model IDs that do not match the configured allowlist."""
     from harness.shared.contracts.infer import _guard_model_id
     with pytest.raises(ValueError, match="model_id"):
         _guard_model_id(bad_model_id)
@@ -787,6 +793,7 @@ async def test_promoted_bundle_drives_agent_loop(test_key_prefix, tmp_path):
         _guard_model_id(str(model_id))
 
     # Verify AgentLoopInput construction succeeds with the emitted fields
+    # P1-2 fix: wire gates and autonomy_level from agent spec (config over code)
     loop_inp = AgentLoopInput(
         agent_id=agent_spec["id"],
         entity_id=str(uuid.uuid4()),
@@ -797,13 +804,18 @@ async def test_promoted_bundle_drives_agent_loop(test_key_prefix, tmp_path):
         stall_threshold=agent_spec["escalation_rules"]["stall_after"],
         tool_allowlist=agent_spec["tool_allowlist"],
         idempotency_key=f"{test_key_prefix}:loop:compat",
+        gates=agent_spec.get("gates", {}),
+        autonomy_level=agent_spec.get("autonomy_level", "gated"),
     )
     assert loop_inp.agent_id == agent_spec["id"]
-    assert loop_inp.model_id.startswith(("ollama/", "ollama_chat/")), (
-        f"model_id must not be a cloud model: {loop_inp.model_id!r}"
+    assert loop_inp.model_id.startswith("anthropic/"), (
+        f"model_id must use the configured provider prefix: {loop_inp.model_id!r}"
     )
     assert isinstance(loop_inp.tool_allowlist, list)
     assert len(loop_inp.tool_allowlist) >= 1
+    # Gates and autonomy_level must flow from the agent spec (not be ignored)
+    assert loop_inp.gates == agent_spec.get("gates", {}), "gates must come from agent spec"
+    assert loop_inp.autonomy_level == agent_spec.get("autonomy_level", "gated")
 
     # The agent_id field in the flow must match the agent id
     assert flow_spec["agent_id"] == agent_spec["id"], (

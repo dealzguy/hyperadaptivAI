@@ -67,10 +67,13 @@ _ARCHETYPE_TEMPLATES: dict[str, dict[str, Any]] = {
                 "stall_after": 3,
                 "escalate_to": "human_task",
             },
+            # TODO(liquid: construct golden-bundle model_policy — Phase E hardcodes
+            # anthropic/claude-sonnet-4-6 for initial testing; this should come from
+            # operator-approved config in Phase F)
             # model_policy is DATA; values are opaque strings
             "model_policy": {
-                "decide": "ollama_chat/llama3.2:3b",
-                "escalate": "ollama_chat/llama3.1:8b",
+                "decide": "anthropic/claude-sonnet-4-6",
+                "escalate": "anthropic/claude-sonnet-4-6",
             },
             "retrieval_budget": 10,
             "step_budget": 8,

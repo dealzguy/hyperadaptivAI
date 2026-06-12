@@ -1,9 +1,13 @@
-"""LiteLLM-backed embedding provider — routes to local Ollama only.
+"""Embedding provider — NOT wired for Phase E.
 
-Default model is nomic-embed-text at 768 dimensions (pgvector column size).
-See docs/MEMORY.md for embedding dimension rationale.
-TODO(liquid: embedding dimension and model — first real corpus, Phase E)
+NOTE: Embedding provider is a liquid — not wired for Phase E. Knowledge face
+returns [] until this liquid is resolved. Default model is nomic-embed-text
+at 768 dimensions (pgvector column size); model and dimension are subject to
+change when wired. See docs/MEMORY.md for embedding dimension rationale.
+
+TODO(liquid: embedding provider — needs real corpus + dim decision)
 """
+# TODO(liquid: embedding provider — needs real corpus + dim decision)
 from __future__ import annotations
 
 import os

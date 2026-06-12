@@ -4,27 +4,37 @@ Contract: infer(InferInput) -> InferResult
 Settled constraint (doc 12 §2): nothing above this line names a model.
 The implementation lives in harness/shared/inference/litellm_provider.py.
 
-_guard_model_id: allowlist-based — ONLY "ollama/<name>" (completion endpoint)
-OR "ollama_chat/<name>" (chat-completions endpoint) is permitted.
+_guard_model_id: allowlist-based guard, configured via INFER_ALLOWED_PREFIXES env var
+(comma-separated provider prefix strings). Defaults to ("anthropic/",) for initial
+testing. Operators add providers by configuration, not code edits (Invariant 3: no
+closed enumerations on growing sets). Nothing above infer() names a provider —
+this guard enforces the open-set rule, not a specific provider (Invariant 2:
+model-agnostic above the inference line).
 See docs/CONFIG-BUNDLE-SPEC.md §model_policy for normative grammar.
-Liquid resolution recorded in docs/LIQUID-RESOLUTIONS.md ("infer guard prefix set").
-Previous denylist (CLOUD_MODEL_PREFIXES) was bypassable via provider-prefixed
-LiteLLM IDs like "openai/gpt-4o", "anthropic/claude-3-haiku", "groq/...", etc.
-Allowlist closes the entire class in one check and does not enumerate cloud
-providers (satisfies Invariant 3: no closed enumerations on growing sets).
 """
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
+_INFER_ALLOWED_PREFIXES_DEFAULT = ("anthropic/",)
+
+
+def _get_allowed_prefixes() -> tuple[str, ...]:
+    """Read INFER_ALLOWED_PREFIXES env var (comma-separated) or use default."""
+    raw = os.environ.get("INFER_ALLOWED_PREFIXES", "")
+    if raw.strip():
+        return tuple(p.strip() for p in raw.split(",") if p.strip())
+    return _INFER_ALLOWED_PREFIXES_DEFAULT
+
 
 @dataclass
 class InferInput:
-    model_id: str                          # e.g. "ollama/llama3.2:3b"
+    model_id: str                          # e.g. "anthropic/claude-sonnet-4-6" (or "openai/gpt-4o-mini", "groq/llama-3.1-8b-instant")
     messages: list[dict[str, Any]]         # [{"role": "user", "content": "..."}]
     tools: list[dict[str, Any]] = field(default_factory=list)
     policy: dict[str, Any] = field(default_factory=dict)  # max_tokens, temperature, …
@@ -43,20 +53,20 @@ class InferResult:
 
 
 def _guard_model_id(model_id: str) -> None:
-    """Raise ValueError if model_id is not a local Ollama model.
+    """Raise ValueError if model_id does not match the configured provider allowlist.
 
-    Allowlist: "ollama/<name>" (generation endpoint) and "ollama_chat/<name>"
-    (chat completions endpoint — required for structured outputs, used in config
-    bundles as model_policy.decide and model_policy.escalate).
-    Both prefixes route exclusively to local Ollama — cloud isolation is preserved.
-    Any other prefix (openai/, anthropic/, groq/, azure/, vertex_ai/, bedrock/,
-    xai/, bare gpt-4, etc.) is rejected.
+    Allowlist is driven by env INFER_ALLOWED_PREFIXES (comma-separated prefix strings).
+    Defaults to ("anthropic/",) for testing. Operators add providers by configuration,
+    not code edits (Invariant 3: no closed enumerations on growing sets).
+    Nothing above infer() names a provider — this guard enforces the open-set rule,
+    not a specific provider (Invariant 2: model-agnostic above the inference line).
     """
-    if not model_id.startswith(("ollama/", "ollama_chat/")):
+    allowed = _get_allowed_prefixes()
+    if not any(model_id.startswith(p) for p in allowed):
         raise ValueError(
-            f"model_id {model_id!r} is not a local Ollama model. "
-            "All inference must route through local Ollama. "
-            "Use 'ollama/<name>' or 'ollama_chat/<name>' format."
+            f"model_id {model_id!r} does not match any configured provider prefix. "
+            f"Allowed prefixes (INFER_ALLOWED_PREFIXES): {allowed}. "
+            "Add the provider prefix to INFER_ALLOWED_PREFIXES to enable it."
         )
 
 

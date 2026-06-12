@@ -31,8 +31,8 @@
     "escalate_to": "human_task"
   },
   "model_policy": {
-    "decide": "ollama_chat/llama3.2:3b",
-    "escalate": "ollama_chat/llama3.1:8b"
+    "decide": "anthropic/claude-sonnet-4-6",
+    "escalate": "anthropic/claude-sonnet-4-6"
   },
   "retrieval_budget": 10,
   "step_budget": 8,

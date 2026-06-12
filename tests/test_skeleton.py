@@ -8,26 +8,23 @@ Phase A gate criteria (doc 13):
   ✓ Infer contract stub returns deterministic response (smoke test)
   ✓ Software/config/data separation: compose.yaml uses named volumes + mounted config
 """
-import asyncio
 import uuid
 
 import pytest
 
 # ── Unit tests — no stack required ────────────────────────────────────────
 
-@pytest.mark.asyncio
-async def test_infer_stub_smoke():
-    """Infer contract stub returns a deterministic echo — no model call."""
-    from harness.shared.contracts.infer import InferRequest, infer
-
-    req = InferRequest(
-        model_id="stub",
+def test_guard_accepts_default_allowlist():
+    """_guard_model_id accepts the default allowlist prefix (anthropic/) without any env set."""
+    from harness.shared.contracts.infer import _guard_model_id, InferInput
+    # Should not raise — anthropic/ is the default allowed prefix
+    _guard_model_id("anthropic/claude-sonnet-4-6")
+    # InferInput is constructable with an allowed model_id
+    inp = InferInput(
+        model_id="anthropic/claude-sonnet-4-6",
         messages=[{"role": "user", "content": "ping"}],
     )
-    result = await infer(req)
-    assert result.model_id == "stub"
-    assert "ping" in result.content
-    assert "[STUB]" in result.content
+    assert inp.model_id == "anthropic/claude-sonnet-4-6"
 
 
 def test_secrets_provider_raises_on_missing_key():

@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 HyperadaptivAI is a Temporal-based distributed system for adaptive AI agents with durable execution guarantees. The project is organized into numbered phases — **no phase may begin implementation until its plan is reviewed and approved**.
 
+## Current phase
+
+Phase E — consequence gate + inference-API refactor — in progress. See `docs/13-build-roadmap.md` §Phase E for exit gates.
+
 ## Planned Stack
 
 | Component | Technology |

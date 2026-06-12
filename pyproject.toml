@@ -5,7 +5,7 @@ requires-python = ">=3.10"  # 3.12 target per CLAUDE.md; CI host provides 3.10
 dependencies = [
     "temporalio==1.9.0",
     "asyncpg==0.30.0",  # MIT — green tier; async Postgres driver
-    "litellm>=1.0,<2",  # MIT — LLM router, routes to Ollama; >=1.53 required for ollama_chat/ structured outputs
+    "litellm>=1.0,<2",  # MIT — LLM router, routes to configured external API provider
     "httpx==0.25.2",    # BSD-3-Clause — HTTP client, used by litellm
 ]
 
@@ -26,5 +26,5 @@ testpaths = ["tests"]
 markers = [
     "integration: requires a running Temporal + postgres-business stack",
     "unit: no external dependencies required",
-    "ollama: requires Ollama running at OLLAMA_BASE_URL with required models pulled",
+    "api: requires ANTHROPIC_API_KEY (or relevant provider key) set in environment",
 ]

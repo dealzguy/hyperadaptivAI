@@ -11,11 +11,12 @@ Quadlet format stays liquid until Phase E host observation (doc 13).
 - Port availability on the host:
   - `7233` — Temporal gRPC frontend
   - `8080` — Temporal Web UI
-  - `11434` — Ollama inference API
   - `5432` — **not** exposed externally (both Postgres instances stay container-internal)
 - The `temporal` CLI installed on the host for manual workflow commands
   (install from <https://docs.temporal.io/cli#install>)
 - Python 3.12 on the host for running tests
+- An API key for the configured inference provider (default: Anthropic — set
+  `ANTHROPIC_API_KEY` in `deploy/secrets/secrets.env`)
 
 ---
 
@@ -41,7 +42,8 @@ cd /path/to/version1/deploy
 
 # 1. Create the secrets file from the template
 cp secrets/secrets.env.template secrets/secrets.env
-# Edit secrets/secrets.env — set POSTGRES_PASSWORD to a non-default value.
+# Edit secrets/secrets.env — set POSTGRES_PASSWORD to a non-default value
+# and set ANTHROPIC_API_KEY (or your chosen provider's key).
 # This file is gitignored and must never be committed.
 
 # 2. Review the harness config template (adjust LOG_LEVEL if needed)
@@ -68,7 +70,7 @@ on first run (and after any harness code change).
 podman compose -f compose.yaml ps
 ```
 
-Expected: all six services show `running` or `healthy`.
+Expected: all five services show `running` or `healthy`.
 
 | Service | Image | Role |
 |---------|-------|------|
@@ -76,8 +78,11 @@ Expected: all six services show `running` or `healthy`.
 | `postgres-temporal` | `postgres:16.3` | Temporal event store — business code never touches this |
 | `temporal` | `temporalio/auto-setup:1.27.2` | Temporal server + automatic schema init |
 | `temporal-ui` | `temporalio/ui:2.31.2` | Temporal Web UI |
-| `ollama` | `ollama/ollama:0.6.5` | Inference pod (behind stub in Phase A) |
-| `harness-worker` | built from `Dockerfile.harness` | Temporal worker — HelloWorkflow + hello_activity |
+| `harness-worker` | built from `Dockerfile.harness` | Temporal worker — inference via external API provider |
+
+Inference is now external-API-only (no local model weights, no GPU required).
+The worker reads `ANTHROPIC_API_KEY` (or the relevant provider key) from
+`deploy/secrets/secrets.env` and routes calls via LiteLLM to the configured provider.
 
 ---
 
@@ -126,7 +131,6 @@ podman volume ls | grep data-
 # Expected lines (order may vary):
 #   local   data-business
 #   local   data-temporal-db
-#   local   data-ollama
 
 # Config is bind-mounted, not baked in; confirm harness-worker sees /app/config
 podman exec deploy_harness-worker_1 ls /app/config
@@ -247,5 +251,5 @@ podman compose -f compose.yaml down
 podman compose -f compose.yaml down -v
 ```
 
-> **Warning.** `down -v` permanently deletes `data-business`, `data-temporal-db`,
-> and `data-ollama`. Use only when you intend a clean slate.
+> **Warning.** `down -v` permanently deletes `data-business` and `data-temporal-db`.
+> Use only when you intend a clean slate.
