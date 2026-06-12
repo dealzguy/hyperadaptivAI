@@ -1,0 +1,13 @@
+# Dev overlay — expose postgres-business on localhost for tests and bootstrap.
+# Apply on top of compose.yaml:
+#   podman compose -f compose.yaml -f compose.dev.yaml up -d
+#
+# NOT part of canonical compose.yaml — keeps the production bundle clean.
+# The 5433:5432 mapping allows:
+#   python -m harness.shared.persistence.bootstrap
+#   pytest tests/ -m integration
+
+services:
+  postgres-business:
+    ports:
+      - "127.0.0.1:5433:5432"

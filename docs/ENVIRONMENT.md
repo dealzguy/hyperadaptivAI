@@ -74,14 +74,64 @@ per doc 08 vetting workflow. License drift is real (n8n, Open WebUI precedent).
 - GPU passthrough: TODO(liquid: rootless-vs-GPU resolved per host at Phase E)
 - Manifest format: compose (provisional); TODO(liquid: Quadlet vs. compose — resolved by Phase E observation per doc 13)
 
-## Remaining liquids (not resolved in Phase A)
+## Phase B additions
 
-See doc 13 §10 for the full liquid map. Phase A leaves liquid:
+### New dependencies (Phase B, resolved)
+
+| Package | Pin | License | Tier | Notes |
+|---------|-----|---------|------|-------|
+| asyncpg | 0.30.0 | MIT | Green | Async Postgres driver; async activities only |
+| hypothesis | >=6.100,<7 | MPL-2.0 | Yellow | Dev-only; unmodified; not redistributed; property tests only |
+
+asyncpg: MIT license (not Apache-2.0 — both are green tier, constraint met).
+Hypothesis: MPL-2.0 is yellow tier per Doc 08. Obligation ("publish modifications
+to MPL files") does NOT apply — Hypothesis is unmodified, dev-only, and not
+included in the distributed artifact. Pinned in `[project.optional-dependencies].dev`
+only. Must be excluded from NOTICES/SBOM distribution entry.
+
+### Schema bootstrap
+
+Schema is applied once per fresh volume via the dedicated one-shot entrypoint:
+```
+python -m harness.shared.persistence.bootstrap
+```
+This is NOT run inside the worker hot path (avoids multi-worker DDL races; works
+on already-initialised volumes where an initdb mount would silently no-op).
+
+`TODO(liquid: schema migration tool — Alembic/Atlas/sqitch)` — bootstrap gives no
+migration path. First real migration is Phase C+. Flagged, not chosen.
+
+### Dev overlay
+
+The dev overlay exposes `postgres-business` on `127.0.0.1:5433` for local testing
+and bootstrap. Apply on top of canonical compose:
+```
+podman compose -f deploy/compose.yaml -f deploy/compose.dev.yaml up -d
+```
+Port exposure is NOT in `compose.yaml` — keeps the canonical compose production-clean.
+`sslmode=disable` is acceptable for loopback dev.
+`TODO(liquid: sslmode=require)` — when the business DB moves off-host (Phase E).
+
+### Two-Postgres invariant
+
+The `build_dsn()` function (`harness/shared/persistence/dsn.py`) contains a
+fail-fast guard that asserts `DB_HOST != postgres-temporal` and `POSTGRES_DB != temporal`.
+This is the only runtime enforcement of the two-DB hard rule. `DB_HOST=postgres-business`
+is set in `deploy/compose.yaml` as a non-secret config env var.
+
+## Remaining liquids (not resolved in Phase A or B)
+
+See doc 13 for the full liquid map. Open liquids:
 - Manifest format (compose is provisional; Quadlet resolved at Phase E)
 - Pod packing and Supabase-under-Podman lean profile (Phase E, per host)
 - Rootless vs. GPU passthrough (Phase E, per host)
 - Monitoring stack (Phase E, by observation)
 - Memory taxonomy (Phase C, from first real corpus)
 - Agent internals (Phase C, first deployment)
+- Schema migration tool — Alembic/Atlas/sqitch (Phase C+)
+- Pydantic data converter + temporalio >= 1.11 (Phase C, with typed money/datetime DTOs)
+- sslmode=require for business DB (Phase E, when off-host)
+- Richer identity resolution (Phase E, first real corpus)
+- compensation_handler field on Block + reversing-transition blocks (Phase C, first compensable block)
 
 All resolved liquids are recorded here as they close, with their authorizing evidence.

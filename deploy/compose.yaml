@@ -7,7 +7,7 @@ services:
   # ── PERSISTENCE POD ──────────────────────────────────────────────────────
   # Business Postgres + pgvector. Temporal NEVER uses this instance.
   postgres-business:
-    image: pgvector/pgvector:pg16       # MIT/PostgreSQL — green tier
+    image: docker.io/pgvector/pgvector:pg16       # MIT/PostgreSQL — green tier
     env_file: secrets/secrets.env       # POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
     volumes:
       - data-business:/var/lib/postgresql/data   # data — never in image
@@ -21,7 +21,7 @@ services:
   # ── ORCHESTRATION POD ────────────────────────────────────────────────────
   # Temporal's own dedicated Postgres. Business data NEVER touches this instance.
   postgres-temporal:
-    image: postgres:16.3                # PostgreSQL license — green tier
+    image: docker.io/postgres:16.3                # PostgreSQL license — green tier
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
@@ -36,12 +36,12 @@ services:
     restart: unless-stopped
 
   temporal:
-    image: temporalio/auto-setup:1.27.2  # MIT — green tier
+    image: docker.io/temporalio/auto-setup:1.27.2  # MIT — green tier
     depends_on:
       postgres-temporal:
         condition: service_healthy
     environment:
-      DB: postgresql
+      DB: postgres12
       DB_PORT: 5432
       POSTGRES_USER: temporal
       POSTGRES_PWD: temporal
@@ -51,7 +51,7 @@ services:
     restart: unless-stopped
 
   temporal-ui:
-    image: temporalio/ui:2.31.2          # MIT — green tier
+    image: docker.io/temporalio/ui:2.31.2          # MIT — green tier
     depends_on:
       - temporal
     environment:
@@ -64,7 +64,7 @@ services:
   # ── INFERENCE POD ────────────────────────────────────────────────────────
   # Ollama behind the infer contract. Models pulled at deploy time (doc 08: pull, don't redistribute).
   ollama:
-    image: ollama/ollama:0.6.5           # MIT — green tier
+    image: docker.io/ollama/ollama:0.6.5           # MIT — green tier
     volumes:
       - data-ollama:/root/.ollama        # model weights — data, never in image
     ports:
@@ -72,19 +72,26 @@ services:
     restart: unless-stopped
 
   # ── HARNESS POD ──────────────────────────────────────────────────────────
-  # Temporal worker running the walking skeleton. Config mounted; secrets via env_file.
+  # Temporal worker — Phase B: CRM spine + verb activities + LeadIntakeWorkflow.
+  # DB_HOST=postgres-business enforces the two-Postgres hard rule; build_dsn()
+  # also has a fail-fast guard at runtime. Schema applied via bootstrap, not here.
   harness-worker:
     build:
       context: ..
       dockerfile: Dockerfile.harness
     depends_on:
-      - temporal
+      temporal:
+        condition: service_started
+      postgres-business:
+        condition: service_healthy     # wait for DB readiness before worker starts
     env_file:
-      - secrets/secrets.env             # secrets — never baked in
+      - secrets/secrets.env             # POSTGRES_USER / PASSWORD / DB — secrets
     environment:
       TEMPORAL_HOST: temporal:7233
       TEMPORAL_TASK_QUEUE: skeleton-queue
       LOG_LEVEL: INFO
+      DB_HOST: postgres-business        # config (not secret) — two-DB guard reads this
+      DB_PORT: "5432"
     volumes:
       - ./config:/app/config:ro         # config — mounted read-only
     restart: unless-stopped
