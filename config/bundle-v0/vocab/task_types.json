@@ -1,0 +1,8 @@
+{
+  "_note": "Open set — append never edit.",
+  "task_types": [
+    "first_follow_up",
+    "agent_gate_approval",
+    "agent_escalation"
+  ]
+}

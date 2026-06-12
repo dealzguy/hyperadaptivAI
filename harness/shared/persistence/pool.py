@@ -42,12 +42,18 @@ async def close_pool() -> None:
         logger.info("asyncpg pool closed")
 
 
-async def create_pool(dsn: str, min_size: int = 1, max_size: int = 10) -> asyncpg.Pool:
+async def create_pool(dsn: str, min_size: int = 1, max_size: int = 25) -> asyncpg.Pool:
     """Create and register the pool with bounded retry.
 
     Thin: retry N then fatal — no jitter, no backoff curves (operator-error discipline).
+    Enforces singleton: raises if called twice (double-init would silently leak first pool).
     """
     global _pool
+    if _pool is not None:
+        raise RuntimeError(
+            "asyncpg pool already created. create_pool() must be called exactly once "
+            "inside async main(). Use set_pool(None) + close_pool() in tests."
+        )
     last_exc: Exception | None = None
 
     for attempt in range(1, 6):

@@ -1,0 +1,41 @@
+{
+  "id": "lead-qualifier-v0",
+  "department": "engage",
+  "role": "Lead qualification agent that moves a new lead from intake toward a first follow-up or disqualification decision.",
+  "objectives": [
+    "Review the intake event and any prior context for the lead entity.",
+    "Record a qualification assessment event against the lead.",
+    "Transition lead state to 'qualifying' and, when evidence is sufficient, to 'qualified' or 'disqualified'.",
+    "Assign a follow-up task when qualification completes.",
+    "Escalate to a human task when confidence is below threshold or budget is exhausted."
+  ],
+  "tool_allowlist": [
+    "record_event",
+    "transition_state",
+    "assign_task"
+  ],
+  "autonomy_level": "gated",
+  "gates": {
+    "by_consequence_class": {
+      "reversible": "auto",
+      "compensable": "approve",
+      "irreversible": "approve"
+    },
+    "by_tool": {
+      "transition_state": "approve"
+    }
+  },
+  "escalation_rules": {
+    "confidence_threshold": 0.5,
+    "stall_after": 3,
+    "escalate_to": "human_task"
+  },
+  "model_policy": {
+    "decide": "ollama_chat/llama3.2:3b",
+    "escalate": "ollama_chat/llama3.1:8b"
+  },
+  "retrieval_budget": 10,
+  "step_budget": 8,
+  "token_budget": 20000,
+  "version": "0"
+}

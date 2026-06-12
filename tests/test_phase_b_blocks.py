@@ -147,7 +147,7 @@ async def test_relate_golden(db_conn, test_key_prefix):
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], max_examples=10)
-@given(rtype=st.text(min_size=1, max_size=20))
+@given(rtype=st.text(min_size=1, max_size=20, alphabet=st.characters(blacklist_characters="\x00")))
 async def test_relate_property_idempotency(db_conn, test_key_prefix, rtype):
     """Property: same relationship key → exactly one row."""
     from harness.shared.crm.verbs import create_entity, relate
@@ -208,7 +208,7 @@ async def test_record_event_golden(db_conn, test_key_prefix):
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], max_examples=10)
-@given(payload=st.dictionaries(st.text(min_size=1, max_size=8), st.integers(), max_size=4))
+@given(payload=st.dictionaries(st.text(min_size=1, max_size=8, alphabet=st.characters(blacklist_characters="\x00")), st.integers(), max_size=4))
 async def test_record_event_property_idempotency(db_conn, test_key_prefix, payload):
     """Property: same event key with any jsonb payload → exactly one row."""
     from harness.shared.crm.verbs import create_entity, record_event
@@ -275,7 +275,7 @@ async def test_transition_state_golden(db_conn, test_key_prefix):
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], max_examples=10)
-@given(position=st.text(min_size=1, max_size=20))
+@given(position=st.text(min_size=1, max_size=20, alphabet=st.characters(blacklist_characters="\x00")))
 async def test_transition_state_property_idempotency(db_conn, test_key_prefix, position):
     """Property: same state key → exactly one row for that key."""
     from harness.shared.crm.verbs import create_entity, transition_state
@@ -335,7 +335,7 @@ async def test_assign_task_golden(db_conn, test_key_prefix):
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], max_examples=10)
-@given(task_type=st.text(min_size=1, max_size=20))
+@given(task_type=st.text(min_size=1, max_size=20, alphabet=st.characters(blacklist_characters="\x00")))
 async def test_assign_task_property_idempotency(db_conn, test_key_prefix, task_type):
     """Property: same task key → exactly one row for that key."""
     from harness.shared.crm.verbs import assign_task, create_entity

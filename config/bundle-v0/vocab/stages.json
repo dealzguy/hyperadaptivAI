@@ -1,0 +1,10 @@
+{
+  "_note": "Open set — append never edit. States used in lead_lifecycle state machine.",
+  "stages": [
+    "new",
+    "qualifying",
+    "qualified",
+    "disqualified",
+    "first_follow_up_done"
+  ]
+}

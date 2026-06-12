@@ -1,0 +1,32 @@
+{
+  "id": "lead-intake-first-follow-up",
+  "version": "0.1.0",
+  "description": "Flow: new lead submitted via web form → qualification agent → first follow-up task assigned.",
+  "trigger": {
+    "event_type": "intake_submitted"
+  },
+  "workflow_type": "AgentLoopWorkflow",
+  "agent_id": "lead-qualifier-v0",
+  "workflow_id_template": "agent-loop-lead-intake-first-follow-up-{entity_key}",
+  "goal_payload_template": {
+    "flow_class": "lead-intake-first-follow-up",
+    "objective": "Qualify this lead and schedule a first follow-up or disqualify.",
+    "tool_arg_schemas": {
+      "record_event": {
+        "event_type": "string",
+        "payload": "object"
+      },
+      "transition_state": {
+        "entity_id": "string",
+        "from_state": "string",
+        "to_state": "string",
+        "reason": "string"
+      },
+      "assign_task": {
+        "task_type": "string",
+        "entity_id": "string",
+        "attributes": "object"
+      }
+    }
+  }
+}
