@@ -7,7 +7,7 @@ Phase C. Last updated: 2026-06-11.
 ## Overview
 
 The system has four memory faces. Each face has a distinct access pattern, storage
-location, and retention policy. They are composed — not unified — so the taxonomy
+location, and retention policy. [PROD] They are composed — not unified — so the taxonomy
 can grow per corpus without a global schema migration.
 
 | Face | Table | Access | Retention |
@@ -74,7 +74,7 @@ It is named `run_id` for historical reasons — treat it as `workflow_id` in que
 
 ### Idempotency
 
-Every write is keyed by `idempotency_key`, which the workflow derives deterministically:
+[PROD] Every write is keyed by `idempotency_key`, which the workflow derives deterministically:
 ```python
 f"{workflow_id}:{step}:episodic"
 ```
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS agent_directive (
 );
 ```
 
-One row per `agent_id`. Semantics: last-write-wins operator override.
+[PROD] One row per `agent_id`. Semantics: last-write-wins operator override.
 
 ### Access Methods
 
@@ -110,7 +110,7 @@ One row per `agent_id`. Semantics: last-write-wins operator override.
 
 ### Correction Discipline
 
-To inject a mid-run correction into a running agent:
+[PROD] To inject a mid-run correction into a running agent:
 1. Signal `pause_instance()` to the workflow.
 2. Call `write_directive` with the new `priority_text`.
 3. Signal `resume_instance()`.
@@ -139,9 +139,14 @@ CREATE INDEX IF NOT EXISTS knowledge_doc_ns_vec
     WITH (lists = 100);
 ```
 
-**Embedding model:** `nomic-embed-text` via Ollama (768 dimensions, cosine similarity).
-The model ID is configured in the config bundle — `embed_provider.py` reads it from the
-`EMBED_MODEL_ID` environment variable (default: `ollama/nomic-embed-text`).
+**Embedding model:** configured via `EMBED_MODEL_ID`; cosine similarity.
+[PROD] The model ID is configuration — `embed_provider.py` reads it from the
+`EMBED_MODEL_ID` environment variable. The Phase C default (`ollama/nomic-embed-text`,
+768 dimensions, local Ollama) is **superseded (2026-06)**: all model calls, including
+embeddings, are API-based — `EMBED_MODEL_ID` must name an API embedding model.
+<!-- [UNCERTAIN] the knowledge_doc schema pins vector(768) to the old nomic-embed-text
+dimensionality; an API embedding model with a different dimension requires a schema
+migration (no migration tool chosen yet — see the open schema-migration liquid). -->
 
 **ivfflat caveat:** the index performs worse than a sequential scan below ~390 rows.
 After bulk-loading knowledge docs, run `ANALYZE knowledge_doc;` to update planner
@@ -170,7 +175,7 @@ to retrieve.
 
 ## `PostgresMemoryProvider`
 
-All four non-CRM faces are accessed through a single provider class:
+[PROD] All four non-CRM faces are accessed through a single provider class:
 
 ```
 harness/shared/memory/postgres_memory.py — PostgresMemoryProvider(pool: asyncpg.Pool)
@@ -187,6 +192,6 @@ pool lifecycle issues. Activities obtain the pool via `get_pool()` from
 
 ## Contract Dataclasses
 
-All memory I/O types are defined in `harness/shared/contracts/memory.py` as plain
-`@dataclass` types — no asyncpg, no litellm, no I/O. Safe to import inside the
+[PROD] All memory I/O types are defined in `harness/shared/contracts/memory.py` as plain
+`@dataclass` types — no asyncpg, no litellm, no I/O. [PROD] Safe to import inside the
 Temporal workflow sandbox if needed for type annotations.

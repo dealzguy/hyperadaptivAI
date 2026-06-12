@@ -20,12 +20,12 @@ My evaluator asks "is this correct / elegant / structurally sound?" — and it's
 
 ## The check that works
 
-Before committing to a piece of structure, ask: **what concrete situation am I building this for, that exists now or imminently — and which layer of this commitment am I extrapolating from principle?** Two outcomes:
+[DEV] Before committing to a piece of structure, ask: **what concrete situation am I building this for, that exists now or imminently — and which layer of this commitment am I extrapolating from principle?** Two outcomes:
 
 - I can name the situation and the layer is justified by what I've actually seen → build it.
 - I'm building from principle without a present situation forcing the shape → scaffold the *existence* of the layer, leave it thin, let reality fill it in.
 
-This is not "don't build." It's *commit at the resolution my evidence authorizes; stay liquid below that.* I'm allowed to be very committed at one layer and very loose at the layer below it, in the same artifact, at the same moment. That's what calibrated experience actually authorizes — not all-or-nothing.
+[DEV] This is not "don't build." It's *commit at the resolution my evidence authorizes; stay liquid below that.* I'm allowed to be very committed at one layer and very loose at the layer below it, in the same artifact, at the same moment. That's what calibrated experience actually authorizes — not all-or-nothing.
 
 ## The metaphysics warning, specifically
 
@@ -33,11 +33,11 @@ The pull is strongest and the correction is weakest when I'm reaching for grand 
 
 ## Applied to building things
 
-- **Vision and first-principles** → commit hard. That's where my priors are dense and tested.
-- **Layer existence and rough position** → commit.
-- **Internal shape of a layer I haven't watched in action** → scaffold the layer, don't instantiate the internals. Let the first real workflow specify them.
-- **Second instance of a pattern** → *now* extract the abstraction. The duplication tells me where the joint actually is.
-- **Libraries, schemas, taxonomies, frameworks** → built from observed duplication, not anticipated duplication.
+- [DEV] **Vision and first-principles** → commit hard. That's where my priors are dense and tested.
+- [DEV] **Layer existence and rough position** → commit.
+- [DEV] **Internal shape of a layer I haven't watched in action** → scaffold the layer, don't instantiate the internals. Let the first real workflow specify them.
+- [DEV] **Second instance of a pattern** → *now* extract the abstraction. The duplication tells me where the joint actually is.
+- [DEV] **Libraries, schemas, taxonomies, frameworks** → built from observed duplication, not anticipated duplication.
 
 ## With other people
 

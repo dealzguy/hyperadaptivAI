@@ -29,7 +29,7 @@ the human reviewer submits corrections (see §5). The round number is tracked in
 
 ### 2.1 Data → Five CRM Primitives
 
-The five CRM primitives are an open set of strings (Invariant 3 — no Python enum).
+[PROD] The five CRM primitives are an open set of strings (Invariant 3 — no Python enum).
 The standard five are:
 
 | Primitive | What it models | Example mapping |
@@ -72,13 +72,13 @@ Switches are baseline values from the archetype's template entry:
 }
 ```
 
-Switch values are config data, not code. New archetypes append new entries to
+[PROD] Switch values are config data, not code. New archetypes append new entries to
 `_ARCHETYPE_TEMPLATES`; the archetype name and its baseline switches are data in
 that table, not Python constants.
 
 ### 2.3 Calculations → Rules with Real Test Vectors
 
-Calculation rules are lifted verbatim from `$.calculations` in the fixture. The
+Calculation rules are lifted verbatim from `$.calculations` in the fixture. [PROD] The
 vector-lifting rule is absolute: **test vectors must come from real fixture
 artifacts, never be invented**. The fixture is re-opened during the dissect
 activity via the provenance source path recorded in the interview's taxonomy.
@@ -106,7 +106,7 @@ CalculationRule(
 
 ### 2.4 Consequence Taxonomy
 
-The consequence taxonomy is inherited from `InterviewResult.consequence_taxonomy`
+[PROD] The consequence taxonomy is inherited from `InterviewResult.consequence_taxonomy`
 and carried forward into `DissectionResult.consequence_taxonomy`. It may be
 modified by:
 
@@ -117,7 +117,7 @@ modified by:
 
 ## 3. Provenance Format
 
-Every provenance dict follows this schema:
+[PROD] Every provenance dict follows this schema:
 
 ```python
 {
@@ -132,17 +132,17 @@ For taxonomy provenance, two additional keys may appear:
 - `"fault"` — populated when fault injection is active (see §4).
 - `"correction"` — populated when a correction is applied (see §5).
 
-These keys serve as branch-node locators in the audit trail: a reviewer or debugger
+[PROD] These keys serve as branch-node locators in the audit trail: a reviewer or debugger
 can pinpoint exactly where the taxonomy diverged from the fixture values.
 
 ---
 
 ## 4. Fault Injection (Discipline Test)
 
-The discipline test verifies that the commissioning pipeline can detect and correct
+[DEV] The discipline test verifies that the commissioning pipeline can detect and correct
 a wrong consequence classification before promoting the bundle.
 
-Activation: `DissectActivityInput(inject_fault=True, round=0, correction=None)`.
+[DEV] Activation: `DissectActivityInput(inject_fault=True, round=0, correction=None)`.
 This condition is honoured **only on round 0**. If `correction` is not None or
 `round > 0`, fault injection is skipped.
 
@@ -201,13 +201,13 @@ When `auto_advance_dissect=False`, the commissioning workflow pauses at
 
 ### 5.2 Rollback-Regenerate Semantics
 
-"Branch rollback" is implemented as a typed correction loop within one Temporal
+[PROD] "Branch rollback" is implemented as a typed correction loop within one Temporal
 workflow execution — not as a `temporal workflow reset`. The history records each
 dissect round as a distinct activity execution. The workflow state machine re-runs
 Stage 1 with the corrected input; Stages 2–4 only run after the loop exits.
 
 This differs from the literal "native Temporal reset" phrasing in Doc 12 and is
-flagged explicitly as a design decision. The typed loop is replay-safe and
+flagged explicitly as a design decision. [PROD] The typed loop is replay-safe and
 deterministic; a literal workflow reset would not have access to the correction
 signal data within the same execution.
 
@@ -226,7 +226,7 @@ taxonomy_provenance["correction"] = {
 }
 ```
 
-The correction provenance is written into the taxonomy that `DissectionResult`
+[PROD] The correction provenance is written into the taxonomy that `DissectionResult`
 carries. Downstream activities (construct, validate) receive only the corrected
 taxonomy; the workflow's `_corrections_applied` list records the full history.
 
@@ -234,7 +234,7 @@ taxonomy; the workflow's `_corrections_applied` list records the full history.
 
 ## 6. Signal Race Avoidance
 
-`self._dissect_reviewed = False` is reset at the **top** of each iteration of the
+[PROD] `self._dissect_reviewed = False` is reset at the **top** of each iteration of the
 dissect loop, **before** the `execute_activity` call. This ensures a signal that
 arrives during the activity execution is not clobbered by the reset. The pattern
 is documented in the `CommissioningWorkflow` module docstring.
@@ -269,8 +269,8 @@ Block(
 )
 ```
 
-REVERSIBLE because dissect performs analysis only — no external side effects.
-`idempotent=False` because live-inference calls are nondeterministic (stub mode is
+[PROD] REVERSIBLE because dissect performs analysis only — no external side effects.
+[PROD] `idempotent=False` because live-inference calls are nondeterministic (stub mode is
 deterministic but the block registration reflects the live-mode contract).
 
 ---
@@ -280,10 +280,10 @@ deterministic but the block registration reflects the live-mode contract).
 Raises `NotImplementedError`. The live implementation should:
 
 1. Receive the `InterviewResult` as context.
-2. Call `infer()` to produce primitive mappings, archetype selection, and
+2. [PROD] Call `infer()` to produce primitive mappings, archetype selection, and
    archetype switch recommendations.
-3. Validate all five primitive types are covered (entity, state, event,
+3. [PROD] Validate all five primitive types are covered (entity, state, event,
    relationship, task) — if any are missing, issue a targeted follow-up call.
-4. Lift calculation rules from the fixture (not from the model — vectors must
+4. [PROD] Lift calculation rules from the fixture (not from the model — vectors must
    always come from real artifacts, never from model output).
-5. Return `DissectionResult` with the same schema as stub mode.
+5. [PROD] Return `DissectionResult` with the same schema as stub mode.

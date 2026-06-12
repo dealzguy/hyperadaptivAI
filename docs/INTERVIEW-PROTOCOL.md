@@ -8,7 +8,7 @@ to Phase E; stub mode is the current implementation.
 
 ## 1. Purpose
 
-Stage 0 reads a structured fixture representing an operator's business context and
+[PROD] Stage 0 reads a structured fixture representing an operator's business context and
 extracts three artefacts:
 
 1. **ContextFrame** — the operator's business identity and lifecycle vocabulary.
@@ -16,7 +16,7 @@ extracts three artefacts:
    `compensable`, `irreversible`).
 3. **ScenarioCards** — 5–10 deal-shape scenarios walked from real cases.
 
-The output `InterviewResult` feeds directly into Stage 1 (dissect). All fields
+[PROD] The output `InterviewResult` feeds directly into Stage 1 (dissect). [PROD] All fields
 carry provenance records that trace each value to its fixture source path.
 
 ---
@@ -93,19 +93,19 @@ following top-level keys.
 
 ### 3.2 Scenario Card Constraints
 
-- Minimum 5, maximum 10 scenario cards per fixture.
-- `expected_outcome` must be a value present in `lifecycle.stages`. The validate
+- [PROD] Minimum 5, maximum 10 scenario cards per fixture.
+- [PROD] `expected_outcome` must be a value present in `lifecycle.stages`. The validate
   Tier 0 scenario simulation check (`expected_outcome ∈ vocab.stages`) will fail
   otherwise.
-- `expected_stages` may contain repeated values (e.g. a lead cycling through
+- [PROD] `expected_stages` may contain repeated values (e.g. a lead cycling through
   `"qualifying"` twice). All values must be present in `lifecycle.stages`.
-- The interview activity enforces the 5–10 card count with a non-retryable
+- [PROD] The interview activity enforces the 5–10 card count with a non-retryable
   `ApplicationError` — a fixture with fewer than 5 or more than 10 cards is a
   fixture defect, not a transient.
 
 ### 3.3 Tool List
 
-The `$.tools` array is the authoritative source for consequence taxonomy. Each entry:
+[PROD] The `$.tools` array is the authoritative source for consequence taxonomy. Each entry:
 
 | Field | Type | Required |
 |---|---|---|
@@ -125,7 +125,7 @@ The `$.tools` array is the authoritative source for consequence taxonomy. Each e
 | `business_name` | `$.business.name` | |
 | `what_is_sold` | `$.business.what_is_sold` | |
 | `sold_to_whom` | `$.business.sold_to_whom` | |
-| `lifecycle_stages` | `$.lifecycle.stages` | Open set — order is significant (state machine ordering) |
+| `lifecycle_stages` | `$.lifecycle.stages` | [PROD] Open set — order is significant (state machine ordering) |
 | `revenue_concentration` | `$.business.revenue_concentration` | |
 | `exceptions_that_matter` | `$.business.exceptions` | |
 | `version` | `0` | Bumped on correction |
@@ -145,8 +145,8 @@ provenance: {
 }
 ```
 
-`by_tool` is a plain dict with open-set string values. It is not a Python enum
-(Invariant 3). New consequence classes may be added by appending to the taxonomy;
+[PROD] `by_tool` is a plain dict with open-set string values. It is not a Python enum
+(Invariant 3 — [PROD]). New consequence classes may be added by appending to the taxonomy;
 no code changes are required.
 
 ### 4.3 ScenarioCard
@@ -187,10 +187,10 @@ Revenue note: {revenue_concentration}.
 
 The activity reads the fixture file directly and maps fields to the output
 dataclasses. All provenance records reference `"source": "fixture:<fixture_path>"`
-and the JSON path within the fixture. Stub mode is deterministic: same fixture
+and the JSON path within the fixture. [PROD] Stub mode is deterministic: same fixture
 always produces the same `InterviewResult`.
 
-Stub mode is used in all Phase D tests and CI runs.
+[DEV] Stub mode is used in all Phase D tests and CI runs.
 
 ### Live Mode
 
@@ -198,13 +198,13 @@ Raises `NotImplementedError` with a pointer to Phase E. The live implementation
 should:
 
 1. Load the fixture as a structured brief.
-2. Call `infer()` per the Stage 0 prompt templates (to be defined in Phase E) with
+2. [PROD] Call `infer()` per the Stage 0 prompt templates (to be defined in Phase E) with
    the fixture as context.
-3. Validate the model response against the output schema.
-4. Re-issue targeted follow-up calls for any field that fails schema validation
+3. [PROD] Validate the model response against the output schema.
+4. [PROD] Re-issue targeted follow-up calls for any field that fails schema validation
    (up to a configurable retry budget before raising `ApplicationError`).
 
-Live mode output must produce the same `InterviewResult` schema — the downstream
+[PROD] Live mode output must produce the same `InterviewResult` schema — the downstream
 dissect/construct/validate stages are unaware of whether the interview ran in stub
 or live mode.
 
@@ -221,9 +221,9 @@ Block(
 )
 ```
 
-`idempotent=False` because live-inference calls are nondeterministic. The
+[PROD] `idempotent=False` because live-inference calls are nondeterministic. [PROD] The
 `idempotency_key` field on `InterviewActivityInput` is accepted for audit tracing
-only, not for deduplication. Temporal's retry policy (maximum_attempts=3,
+only, not for deduplication. [PROD] Temporal's retry policy (maximum_attempts=3,
 start_to_close_timeout=10 min) governs transient failures.
 
 ---
@@ -234,5 +234,5 @@ Canonical example fixture: `fixtures/commission_fixture_01.json`
 
 Operator: Meridian Realty Partners (`meridian-realty-v0`). Lifecycle stages are
 identical to `config/bundle-v0/` vocab so the golden comparison in validate Tier 0
-passes exactly. This fixture is the authoritative input for all Phase D integration
+passes exactly. [DEV] This fixture is the authoritative input for all Phase D integration
 tests.

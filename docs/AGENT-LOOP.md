@@ -7,7 +7,7 @@ Phase C. Last updated: 2026-06-11.
 ## Overview
 
 `AgentLoopWorkflow` is a durable Temporal workflow that drives an agent through a
-SITUATE → DECIDE → ACT → RECORD cycle up to `max_steps` times. Every step that
+SITUATE → DECIDE → ACT → RECORD cycle up to `max_steps` times. [PROD] Every step that
 touches inference, storage, or the clock does so through an activity — the workflow
 body itself is purely deterministic.
 
@@ -30,7 +30,7 @@ Workflow ID convention: `agent-loop-{flow_id}-{entity_id}`
 
 **Output:** `SituateResult(context_dict, tokens_used=0)` — pure read, no tokens consumed.
 
-**Consequence class:** REVERSIBLE. Retry policy: 3 attempts, 2-minute timeout.
+[PROD] **Consequence class:** REVERSIBLE. Retry policy: 3 attempts, 2-minute timeout.
 
 ---
 
@@ -41,8 +41,8 @@ budget_remaining, idempotency_key)`
 
 **What it does (live mode):**
 - Builds a system prompt listing `tool_allowlist` and a user prompt from `context_dict`.
-- Calls `infer(InferInput(...))` → LiteLLM → Ollama (local only). `model_id` comes from
-  `AgentLoopInput`, which is sourced from the config bundle — workflow code never names a
+- Calls `infer(InferInput(...))` → LiteLLM → the configured external API provider. `model_id` comes from
+  `AgentLoopInput`, which is sourced from the config bundle — [PROD] workflow code never names a
   model (invariant 2).
 - Parses JSON response for keys: `action_type`, `action_payload`, `rationale`, `confidence`.
 - Falls back gracefully on parse error (logs warning, uses first allowlist entry).
@@ -52,7 +52,7 @@ without a model call. Used for deterministic loop tests.
 
 **Output:** `DecideResult(action_type, action_payload, rationale, tokens_used, confidence)`
 
-**Consequence class:** REVERSIBLE (pure inference, no external side effects). Retry policy:
+[PROD] **Consequence class:** REVERSIBLE (pure inference, no external side effects). Retry policy:
 3 attempts, 5-minute timeout.
 
 **How `model_id` flows:**
@@ -60,12 +60,18 @@ without a model call. Used for deterministic loop tests.
 config/bundle-v0/agents/*.json  →  AgentLoopInput.model_id
     →  DecideInput.model_id
         →  InferInput.model_id
-            →  litellm_provider.infer()  [_guard_model_id enforces ollama/ollama_chat prefix]
+            →  litellm_provider.infer()  [_guard_model_id enforces the configured model-id allowlist]
                 →  LiteLLM
-                    →  Ollama (localhost:11434)
+                    →  configured external API provider
 ```
 
-Nothing above the `infer()` call names a model.
+[PROD] Nothing above the `infer()` call names a model or provider.
+
+> **Inference backend note (2026-06):** All LLM calls are API-based — no local Ollama,
+> no local model weights, no GPU. The Phase C implementation routed to local Ollama
+> (`ollama/`/`ollama_chat/` guard prefixes); the guard allowlist is being repointed to
+> API model IDs (e.g. `openai/gpt-4o-mini`). See `docs/PRINCIPLES.md` for the corrected
+> [PROD] inference principles.
 
 ---
 
@@ -75,12 +81,12 @@ Nothing above the `infer()` call names a model.
 
 **What it does:**
 - Looks up `action_type` in the capability registry (`registry.get(action_type)`).
-- If not found: returns `ActResult(error=...)` — soft error, never raises (P0-2 compliance).
+- If not found: returns `ActResult(error=...)` — [PROD] soft error, never raises (P0-2 compliance).
   The workflow parks on `ActResult.error` rather than retrying forever.
 - Injects cross-cutting fields the model should not supply:
   - `idempotency_key` → all verbs
   - `entity_id` → all verbs
-  - `occurred_at` → `record_event` only (server-side UTC; model never fabricates timestamps — P1-2)
+  - `occurred_at` → `record_event` only ([PROD] server-side UTC; model never fabricates timestamps — P1-2)
 - Dispatches to the CRM verb directly (same activity context); wraps exceptions → soft error.
 
 **Output:** `ActResult(outcome_payload, consequence_class, error)`
@@ -88,7 +94,7 @@ Nothing above the `infer()` call names a model.
 **Error containment (P0-2):** bounded `RetryPolicy(maximum_attempts=2)` at the call site;
 `ActivityError` (retry exhaustion) is caught in the workflow and routes to `_record_park`.
 
-**Consequence class:** REVERSIBLE (the routing shell; inner consequence class is the verb's).
+[PROD] **Consequence class:** REVERSIBLE (the routing shell; inner consequence class is the verb's).
 Retry policy: 2 attempts, 2-minute timeout.
 
 ---
@@ -104,9 +110,9 @@ model_id, token_count, entity_key, idempotency_key)`
 
 **Output:** `RecordResult(id, created)`
 
-**Consequence class:** REVERSIBLE. Retry policy: 5 attempts, 2-minute timeout.
+[PROD] **Consequence class:** REVERSIBLE. Retry policy: 5 attempts, 2-minute timeout.
 The higher attempt count ensures the audit trail is written even under transient DB
-pressure — "failure degrades into a visible queue, never silent loss."
+pressure — [PROD] "failure degrades into a visible queue, never silent loss."
 
 ---
 
@@ -132,7 +138,7 @@ from the flow definition.
 
 ## Signal Handlers
 
-All signal handlers only flip boolean flags — no DB, no inference, no clocks.
+[PROD] All signal handlers only flip boolean flags — no DB, no inference, no clocks.
 
 | Signal | Effect |
 |--------|--------|
@@ -145,14 +151,14 @@ All signal handlers only flip boolean flags — no DB, no inference, no clocks.
 ## Query Handler
 
 `get_state() -> dict` returns `{"paused": bool, "steps": int, "tokens": int}` synchronously
-with no side effects.
+with [PROD] no side effects.
 
 ---
 
 ## Park Semantics
 
 Any terminal condition (budget, stall, act error, stop signal) results in returning an
-`AgentLoopResult` with a descriptive `stop_reason` string (open set — not an enum).
+`AgentLoopResult` with a descriptive `stop_reason` string ([PROD] open set — not an enum).
 
 Act errors also trigger `_record_park()`: a best-effort `record_activity` call writing an
 episodic row with `action_type="park"` and `action_payload={"reason": ...}`. If this
@@ -168,12 +174,12 @@ write fails it is swallowed (audit loss is preferable to masking the original er
 
 ## Determinism Note
 
-The workflow body (`run()`, signals, queries) contains zero side effects. All
+[PROD] The workflow body (`run()`, signals, queries) contains zero side effects. [PROD] All
 nondeterminism lives in activities:
 
-- Clocks: `occurred_at` injection in `act_activity`
-- Inference: `decide_activity` (or stub if `INFER_STUB=1`)
-- DB reads/writes: `situate_activity`, `record_activity`
+- [PROD] Clocks: `occurred_at` injection in `act_activity`
+- [PROD] Inference: `decide_activity` (or stub if `INFER_STUB=1`)
+- [PROD] DB reads/writes: `situate_activity`, `record_activity`
 - Config reads: would be `load_agent_definition` (Phase D full bundle loader)
 
 This means Temporal can safely replay the workflow history on any worker restart or
@@ -191,7 +197,7 @@ step once the knowledge ingestion path has real content to retrieve.
 
 ## INFER_STUB=1 Mode
 
-Set `INFER_STUB=1` in the environment to run the full loop deterministically without Ollama:
+Set `INFER_STUB=1` in the environment to run the full loop deterministically without a live model API:
 
 - `decide_activity` returns the first tool in `tool_allowlist` with `confidence=1.0`,
   `tokens_used=0`, and `rationale="stub"`.

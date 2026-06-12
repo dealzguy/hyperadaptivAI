@@ -12,11 +12,11 @@
 
 Three ordering decisions shape the sequence, each derived from the architecture rather than convenience:
 
-**Deterministic before adaptive.** The two-natures boundary is also a build order: the skeleton (blocks, CRM spine, durable workflows) must exist and pass tests before the nervous system (agent loop, memory) has anything to act through. An agent with no verified tools is a hazard; verified tools with no agent are a working scripted system.
+**Deterministic before adaptive.** [DEV] The two-natures boundary is also a build order: the skeleton (blocks, CRM spine, durable workflows) must exist and pass tests before the nervous system (agent loop, memory) has anything to act through. An agent with no verified tools is a hazard; verified tools with no agent are a working scripted system.
 
-**Operations before commissioning.** In runtime order, commissioning precedes operations; in build order it inverts. Commissioning's output — the configuration bundle — is meaningless without a runtime that consumes it, and the factory is itself built from the substrate operations proves out. The bridge between them is built by hand first: **Phase C hand-authors the first configuration bundle** to drive the agent loop, and that hand-authored bundle becomes the golden target Phase D's construction stage must learn to emit. The spec for the factory's output is written by using the output before the factory exists.
+**Operations before commissioning.** [DEV] In runtime order, commissioning precedes operations; in build order it inverts. Commissioning's output — the configuration bundle — is meaningless without a runtime that consumes it, and the factory is itself built from the substrate operations proves out. The bridge between them is built by hand first: **Phase C hand-authors the first configuration bundle** to drive the agent loop, and that hand-authored bundle becomes the golden target Phase D's construction stage must learn to emit. The spec for the factory's output is written by using the output before the factory exists.
 
-**One phase, one plan-mode cycle.** Each phase below is scoped to be one Claude Code planning conversation: enter plan mode, produce the phase plan against this roadmap's exit gate, approve, execute, run the gate. Phases are deliberately sized so a plan fits in one reviewable document.
+**One phase, one plan-mode cycle.** [DEV] Each phase below is scoped to be one Claude Code planning conversation: enter plan mode, produce the phase plan against this roadmap's exit gate, approve, execute, run the gate. Phases are deliberately sized so a plan fits in one reviewable document.
 
 ---
 
@@ -24,13 +24,13 @@ Three ordering decisions shape the sequence, each derived from the architecture 
 
 **Objective.** A repository and a declarative deploy bundle that lays the substrate onto a prepared host, with one durable workflow proving the spine.
 
-**Build.** Repo init with layout proposed in plan mode and approved by the founder (this resolves the `TODO(liquid: repo layout)` — at repo init, as Doc 12 specifies). Version pins: Python, Temporal Python SDK, Postgres, pgvector, Ollama. The deploy bundle skeleton: compose manifests (provisional; Quadlet-vs-compose stays liquid until first-deployment observation), pods for persistence (Postgres + pgvector), orchestration (Temporal + its own Postgres), inference (Ollama behind a stub of the infer contract), and a minimal harness pod. One hello-world durable workflow with one activity.
+**Build.** Repo init with layout proposed in plan mode and approved by the founder (this resolves the `TODO(liquid: repo layout)` — at repo init, as Doc 12 specifies). Version pins: Python, Temporal Python SDK, Postgres, pgvector, Ollama. The deploy bundle skeleton: compose manifests (provisional; Quadlet-vs-compose stays liquid until first-deployment observation), pods for persistence (Postgres + pgvector), orchestration (Temporal + its own Postgres), inference (Ollama behind a stub of the infer contract), and a minimal harness pod. *(Historical record as built. Superseded 2026-06: API-only inference — the Ollama pin and inference pod are removed from the target bundle; infer routes via LiteLLM to a configured external API provider. See `docs/PRINCIPLES.md`.)* One hello-world durable workflow with one activity.
 
 **Build documents (in-repo, written this phase).** `docs/ENVIRONMENT.md` — pins, layout, host assumptions, the resolved repo-init liquids with their evidence recorded. `deploy/README.md` — how the bundle lays down and verifies.
 
 **Liquids resolved here.** Repo layout; SDK and dependency pins. **Liquids explicitly not resolved:** manifest format (compose is provisional), monitoring stack, pod packing.
 
-**Exit gate.** On a clean prepared host, the bundle lays down from declaration alone; the hello-world workflow runs; a worker killed mid-execution resumes exactly. Software, config, and data demonstrably live in separate places.
+**Exit gate.** [DEV] On a clean prepared host, the bundle lays down from declaration alone; the hello-world workflow runs; a worker killed mid-execution resumes exactly. Software, config, and data demonstrably live in separate places.
 
 ---
 
@@ -42,7 +42,7 @@ Three ordering decisions shape the sequence, each derived from the architecture 
 
 **Build documents.** `docs/BLOCKS.md` — the block schema instantiated, the catalog's registration rules, the additive rule as CI policy. `docs/INTAKE-CONTRACT.md` — the normalized event, the adapter interface, the open-set rule.
 
-**Exit gate.** Every block passes golden and property tests. The scripted workflow runs a fixture lead end to end, twice, idempotently. The closure check passes by hand for the molecules this phase touches.
+**Exit gate.** [DEV] Every block passes golden and property tests. The scripted workflow runs a fixture lead end to end, twice, idempotently. The closure check passes by hand for the molecules this phase touches.
 
 ---
 
@@ -50,11 +50,11 @@ Three ordering decisions shape the sequence, each derived from the architecture 
 
 **Objective.** The adaptive half: one department agent running situate → decide → act → record over the Phase B blocks, governed, budgeted, and pausable — driven by a **hand-authored configuration bundle**.
 
-**Build.** The infer contract implemented over Ollama with LiteLLM capability-addressed routing and structured outputs. The agent loop as a Temporal workflow whose decide step is an inference activity choosing from the tool allowlist; LangGraph/LangMem inside activities, pinned, behind the decision and memory contracts. The memory contract minimally across all four faces: structured (exists from B), knowledge (one ingestion path into pgvector), episodic (every cycle writes act + outcome), directive (one editable priorities object). Budgets and containment: per-loop step and token budgets, stall detection, confidence-routed escalation. The gate as a Temporal signal; pause/park/resume at instance and flow-class scope. The hand-authored configuration bundle: one agent definition (Doc 12 §8 schema), one flow (lead-intake → first-follow-up), vocabulary stubs.
+**Build.** The infer contract implemented over Ollama with LiteLLM capability-addressed routing and structured outputs. *(Historical record as built. Superseded 2026-06: API-only inference — the contract now routes via LiteLLM to a configured external API provider; no local Ollama.)* The agent loop as a Temporal workflow whose decide step is an inference activity choosing from the tool allowlist; LangGraph/LangMem inside activities, pinned, behind the decision and memory contracts. The memory contract minimally across all four faces: structured (exists from B), knowledge (one ingestion path into pgvector), episodic (every cycle writes act + outcome), directive (one editable priorities object). Budgets and containment: per-loop step and token budgets, stall detection, confidence-routed escalation. The gate as a Temporal signal; pause/park/resume at instance and flow-class scope. The hand-authored configuration bundle: one agent definition (Doc 12 §8 schema), one flow (lead-intake → first-follow-up), vocabulary stubs.
 
 **Build documents.** `docs/AGENT-LOOP.md` — the loop, budgets, stall and escalation semantics as implemented. `docs/MEMORY.md` — the four-face contract as implemented; taxonomy explicitly marked `TODO(liquid: first real corpus)`. `config/bundle-v0/` — the hand-authored bundle, annotated, **promoted to golden target for Phase D**.
 
-**Exit gate.** Operations acceptance from Doc 12 §9 on a fixture lead: end-to-end traversal; kill-worker exact resume; instance pause lossless; flow-class pause parks all instances at safe boundaries; one correction recorded as episodic memory and retrieved in the next situate step; replay audit reads true.
+**Exit gate.** [DEV] Operations acceptance from Doc 12 §9 on a fixture lead: end-to-end traversal; kill-worker exact resume; instance pause lossless; flow-class pause parks all instances at safe boundaries; one correction recorded as episodic memory and retrieved in the next situate step; replay audit reads true.
 
 ---
 
@@ -66,7 +66,7 @@ Three ordering decisions shape the sequence, each derived from the architecture 
 
 **Build documents.** `docs/INTERVIEW-PROTOCOL.md` (the relocated Stage 0 artifact — prompts, schemas, traversal order). `docs/DISSECTION.md` — extraction targets, provenance format, vector lifting. `docs/CONFIG-BUNDLE-SPEC.md` — the bundle format, reverse-engineered from the Phase C golden bundle and now normative. `docs/VALIDATION.md` — the ladder as implemented, tier conditions, compensation policy.
 
-**Exit gate.** Commissioning acceptance from Doc 12 §9 against a fixture of the first operator's business class — including the discipline test: one wrong frame assumption deliberately injected at Stage 1, located by provenance, corrected by branch rollback, regenerated, re-certified. The emitted bundle drives the Phase C loop unmodified.
+**Exit gate.** [DEV] Commissioning acceptance from Doc 12 §9 against a fixture of the first operator's business class — including the discipline test: one wrong frame assumption deliberately injected at Stage 1, located by provenance, corrected by branch rollback, regenerated, re-certified. The emitted bundle drives the Phase C loop unmodified.
 
 ---
 
@@ -78,7 +78,7 @@ Three ordering decisions shape the sequence, each derived from the architecture 
 
 **Build documents.** `docs/DEPLOYMENT-RUNBOOK.md` — written *as the deployment happens*; per Doc 6, this documentation is the seed of the standardized product and the maintenance motion. `docs/LIQUID-RESOLUTIONS.md` — each resolved liquid, the evidence that resolved it, the date. `docs/TAXONOMY-v1.md` — the memory taxonomy grown from the first corpus, scoped honestly to one business class.
 
-**Exit gate — this is the MVP.** The operator is a paying charter-member candidate; real leads run the loop on their real data; both correction disciplines have been exercised in production (at least one pause-fix-record; rollback-regenerate exercised at commissioning); the probation ledger shows graduation movement; recurring revenue exists.
+**Exit gate — this is the MVP.** [DEV] The operator is a paying charter-member candidate; real leads run the loop on their real data; both correction disciplines have been exercised in production (at least one pause-fix-record; rollback-regenerate exercised at commissioning); the probation ledger shows graduation movement; recurring revenue exists.
 
 ---
 
@@ -86,11 +86,11 @@ Three ordering decisions shape the sequence, each derived from the architecture 
 
 **Objective.** Generality earned, not claimed. The second operator, in a *different* archetype, commissioned measurably faster — and the second-instance rule finally fires.
 
-**Build.** Commission operator two. Extract abstractions only where the second instance reveals real duplication: shared molecule refinements, the first cross-archetype switch behaviors, cross-department orchestration (when the second department genuinely arrives). Automate the closure check as construction-time CI — its liquid trigger ("second deployment") has now fired. Begin the divergence ledger: what the meta-model absorbed cleanly versus what forced a new switch or archetype, because that ledger *is* the moat's appreciation record.
+**Build.** [DEV] Commission operator two. [DEV] Extract abstractions only where the second instance reveals real duplication: shared molecule refinements, the first cross-archetype switch behaviors, cross-department orchestration (when the second department genuinely arrives). [DEV] Automate the closure check as construction-time CI — its liquid trigger ("second deployment") has now fired. Begin the divergence ledger: what the meta-model absorbed cleanly versus what forced a new switch or archetype, because that ledger *is* the moat's appreciation record.
 
 **Build documents.** `docs/ARCHETYPE-<second>.md` — the second archetype as built. `docs/CLOSURE-CI.md` — the automated check. `docs/DIVERGENCE-LEDGER.md` — fits, forces, and catalog growth per deployment.
 
-**Exit gate.** Second deployment live and paying; commissioning wall-clock and correction counts materially below deployment one; closure CI green; at least one abstraction extracted from observed (not anticipated) duplication.
+**Exit gate.** [DEV] Second deployment live and paying; commissioning wall-clock and correction counts materially below deployment one; closure CI green; at least one abstraction extracted from observed (not anticipated) duplication.
 
 ---
 
@@ -102,16 +102,16 @@ Three ordering decisions shape the sequence, each derived from the architecture 
 
 **Build documents.** `docs/RELEASE.md` — versioning, channel, upgrade path, rollback. `docs/MAINTENANCE-MOTION.md` — the recurring motion as run for every member identically. `docs/ONBOARDING.md` — the third-deployment path with founder-hands minimized. A `CHANGELOG` discipline dating from the first tagged release.
 
-**Exit gate — this is the shippable product.** A third party of reasonable competence could deploy from the release artifacts without the founder's hands; an update ships to both live members through the channel without touching their data or config; the maintenance motion has run at least one full cycle including a model migration; the open-core/paid boundary survives a Doc 8 audit.
+**Exit gate — this is the shippable product.** [DEV] A third party of reasonable competence could deploy from the release artifacts without the founder's hands; an update ships to both live members through the channel without touching their data or config; the maintenance motion has run at least one full cycle including a model migration; the open-core/paid boundary survives a Doc 8 audit.
 
 ---
 
 ## Documents deliberately not written now
 
-Every in-repo document above is named with its phase and trigger, and none is written before its phase — the same rule Document 12 applies to code. In particular: no interview protocol before Phase D, no taxonomy before the first corpus, no maintenance motion before a deployment has been maintained, no second-archetype document before a second business. The roadmap commits the *existence and position* of each document; their internals are specified by the evidence of their phase. This is operator-error.md applied to the document series itself.
+[DEV] Every in-repo document above is named with its phase and trigger, and none is written before its phase — the same rule Document 12 applies to code. In particular: no interview protocol before Phase D, no taxonomy before the first corpus, no maintenance motion before a deployment has been maintained, no second-archetype document before a second business. The roadmap commits the *existence and position* of each document; their internals are specified by the evidence of their phase. This is operator-error.md applied to the document series itself.
 
 ## Working agreement with Claude Code
 
-One phase per planning cycle: enter plan mode, point it at this roadmap's phase section and exit gate, iterate the plan until it is concrete about files, order, and tests, approve, execute, run the gate before the next phase opens. CLAUDE.md (repo root) carries the standing law — settled constraints, invariants, conventions, non-goals — so every session starts already disciplined. The acceptance tests in Doc 12 §9 are the spec of record; a phase is not done because its code exists, it is done because its gate passed.
+[DEV] One phase per planning cycle: enter plan mode, point it at this roadmap's phase section and exit gate, iterate the plan until it is concrete about files, order, and tests, approve, execute, run the gate before the next phase opens. [DEV] CLAUDE.md (repo root) carries the standing law — settled constraints, invariants, conventions, non-goals — so every session starts already disciplined. [DEV] The acceptance tests in Doc 12 §9 are the spec of record; a phase is not done because its code exists, it is done because its gate passed.
 
 *End of Document 13.*

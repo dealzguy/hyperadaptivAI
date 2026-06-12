@@ -12,8 +12,8 @@ HyperadaptivAI is a Temporal-based distributed system for adaptive AI agents wit
 |-----------|-----------|
 | Workflow orchestration | Temporal (Python SDK) |
 | Persistence | PostgreSQL + pgvector |
-| Inference | Ollama (local LLM execution) |
-| LLM gateway | LiteLLM |
+| Inference | External API provider (no local inference; no GPU required) |
+| LLM gateway | LiteLLM (capability-addressed routing to the configured API provider) |
 | Container runtime | Podman (compose for dev; Quadlet stays liquid until Phase B) |
 | Language | Python |
 
@@ -29,8 +29,14 @@ Reference documents live under `docs/`:
 
 ## Key Constraints
 
-- **Phase A contains no business logic** — infrastructure and plumbing only.
-- **No agent code and no real model calls in Phase A** — only a smoke test through the infer contract stub.
-- **Every dependency choice must cite its license tier** per `docs/08`.
-- **Temporal's Postgres and the business Postgres are separate instances.**
-- Dependency version choices belong in the plan; do not resolve "liquid" (open) decisions without flagging them first.
+- [DEV] **Phase A contains no business logic** — infrastructure and plumbing only.
+- [DEV] **No agent code and no real model calls in Phase A** — only a smoke test through the infer contract stub.
+- [DEV] **Every dependency choice must cite its license tier** per `docs/08`.
+- [PROD] **Temporal's Postgres and the business Postgres are separate instances.**
+- [DEV] Dependency version choices belong in the plan; do not resolve "liquid" (open) decisions without flagging them first.
+
+## Constraint tagging — the standing rule
+
+Any reference to a principle or constraint MUST be prefixed with its category tag — [DEV] (development process / operating under now) or [PROD] (end product / building toward). Genuinely-dual slogans must be split into their [DEV] and [PROD] parts before use.
+
+The taxonomy lives in `docs/PRINCIPLES.md` (version1 repo) — it is the source of truth for which tag a principle carries and for how known bundled slogans split. Key consequence: the dev toolchain (Claude / Fable / Sonnet / Claude Code) is [DEV] — never shipped, never run at product runtime, and exempt from the Doc 8 license rule, the inference-routing rule (all runtime LLM calls via the infer contract to a configured API provider), and the model-agnostic invariant, which are [PROD] rules.

@@ -7,14 +7,14 @@
 
 ## 1. Purpose
 
-Stage 3 certifies the `BundleSpec` produced by `construct_activity` before the
-bundle is written to disk by `promote_activity`. A bundle that fails certification
+[PROD] Stage 3 certifies the `BundleSpec` produced by `construct_activity` before the
+bundle is written to disk by `promote_activity`. [PROD] A bundle that fails certification
 is never promoted: `CommissioningWorkflow.run()` raises a non-retryable
 `ApplicationError` on validation failure, and `promote_activity` independently
 guards against an uncertified bundle reaching disk.
 
-Validation runs a tiered ladder. Tier 0 always runs. Tiers 1 and 2 are conditional
-on the availability of data that Phase D fixtures do not yet supply; their absence
+[PROD] Validation runs a tiered ladder. Tier 0 always runs. Tiers 1 and 2 are conditional
+on the availability of data that Phase D fixtures do not yet supply; [PROD] their absence
 is recorded explicitly and never treated as a pass.
 
 ---
@@ -23,18 +23,18 @@ is recorded explicitly and never treated as a pass.
 
 ### Tier 0 — Always Run
 
-Tier 0 has four independent checks. All four must pass for `ValidateActivityResult.passed`
+[PROD] Tier 0 has four independent checks. All four must pass for `ValidateActivityResult.passed`
 to be `True`. Failure in any check populates `failures` with an offending field path
 and sets `passed=False`.
 
 #### (a) Schema Check
 
-Every agent object must contain all 13 required fields with correct Python types.
-Every flow object must contain all 8 required fields. Every vocab file must have a
+[PROD] Every agent object must contain all 13 required fields with correct Python types.
+[PROD] Every flow object must contain all 8 required fields. [PROD] Every vocab file must have a
 `_note` key whose value starts with `"Open set — append never edit."` and at least
 one list-valued payload key.
 
-The required field sets are defined as open dicts in `validate.py`:
+[PROD] The required field sets are defined as open dicts in `validate.py`:
 `_REQUIRED_AGENT_FIELDS` (13 entries) and `_REQUIRED_FLOW_FIELDS` (8 entries). New
 fields are added to these dicts when the schema is extended.
 
@@ -43,26 +43,28 @@ Failure format: `"agents/<stem>.json: missing required field '<field>'"` or
 
 #### (b) Structural Comparison Against Golden Bundle
 
-The golden bundle is `config/bundle-v0/`. Comparison is **schema-level** (key sets
+[PROD] The golden bundle is `config/bundle-v0/`. Comparison is **schema-level** (key sets
 and structural consistency), never value-deep — operator-specific values legitimately
 differ from the golden example.
 
 What is compared:
 
-- **Agent key sets:** every field present in `config/bundle-v0/agents/lead-qualifier-v0.json`
+- [PROD] **Agent key sets:** every field present in `config/bundle-v0/agents/lead-qualifier-v0.json`
   must also be present in the emitted agent object. The emitted object may have
   additional fields (acceptable superset).
-- **Flow key sets:** every field present in `config/bundle-v0/flows/lead-intake-first-follow-up.json`
+- [PROD] **Flow key sets:** every field present in `config/bundle-v0/flows/lead-intake-first-follow-up.json`
   must be present in the emitted flow.
-- **`gates.by_tool`:** all keys in golden `by_tool` must appear in the emitted `by_tool`.
+- [PROD] **`gates.by_tool`:** all keys in golden `by_tool` must appear in the emitted `by_tool`.
   The emitted bundle may have additional `by_tool` keys (more restrictive gating
   is acceptable; fewer keys than the golden is a certification failure).
-- **`model_policy` guard:** every value in `agent.model_policy` is passed through
-  `_guard_model_id()`. A value not starting with `"ollama/"` or `"ollama_chat/"` is
-  a certification failure.
+- [PROD] **`model_policy` guard:** every value in `agent.model_policy` is passed through
+  `_guard_model_id()`. A value not on the configured model-id allowlist is a
+  certification failure. (2026-06: the allowlist is repointed from the local-era
+  `"ollama/"`/`"ollama_chat/"` prefixes to API model IDs, e.g. `openai/gpt-4o-mini`,
+  per the API-only inference decision — see `docs/PRINCIPLES.md`.)
 - **`manifest.json`:** explicitly excluded from golden comparison. Bundle-v0 has no
   manifest.json; the comparison skips this file entirely.
-- **`_note` prefix-match:** vocab file notes are checked with `startswith("Open set — append never edit.")` only — the suffix (e.g. `"States used in lead_lifecycle state machine."`) may differ between bundles.
+- [PROD] **`_note` prefix-match:** vocab file notes are checked with `startswith("Open set — append never edit.")` only — the suffix (e.g. `"States used in lead_lifecycle state machine."`) may differ between bundles.
 
 Failure format: `"agents/<stem>.json: golden field '<field>' missing"` or
 `"agents/<stem>.json: gates.by_tool missing 'transition_state' (taxonomy says compensable/irreversible — golden requires approve-gated)"`.
@@ -73,15 +75,15 @@ Every `CalculationRule` in `DissectionResult.calculation_rules` is evaluated
 against each of its `test_vectors`. The evaluation uses a restricted arithmetic AST
 evaluator (`_eval_expression` in `validate.py`):
 
-- Only arithmetic operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`.
-- No builtins, no attribute access, no function calls — any other AST node type
+- [PROD] Only arithmetic operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`.
+- [PROD] No builtins, no attribute access, no function calls — any other AST node type
   raises `ValueError`.
-- The expression must be in assignment form: `"lhs = rhs"`. The LHS variable name
+- [PROD] The expression must be in assignment form: `"lhs = rhs"`. The LHS variable name
   is the result to return.
 - Input bindings come from `vec["inputs"]`; the evaluator returns `vec["expected"]`
   for comparison.
 
-This check verifies that calculation rules are deterministically reproducible
+[PROD] This check verifies that calculation rules are deterministically reproducible
 without a model call.
 
 Failure format:
@@ -91,12 +93,12 @@ Failure format:
 
 For every `ScenarioCard` in `InterviewResult.scenario_cards`:
 
-- Each value in `card.expected_stages` must be present in the union of all list
+- [PROD] Each value in `card.expected_stages` must be present in the union of all list
   values in all vocab files (`vocab.stages.stages`, plus any other list-valued vocab
   keys).
-- `card.expected_outcome` must be present in the same set.
+- [PROD] `card.expected_outcome` must be present in the same set.
 
-This ensures the scenario paths are self-consistent with the emitted vocabulary —
+[PROD] This ensures the scenario paths are self-consistent with the emitted vocabulary —
 a stage name referenced in a scenario card but missing from `vocab/stages.json`
 would cause a runtime state-machine failure in production.
 
@@ -138,12 +140,12 @@ frequency) within a defined statistical confidence window.
 Tiers 1 and 2 being absent does not block promotion but does impose compensation
 obligations on the promoted bundle:
 
-- The `manifest.json` records `tiers_skipped` with human-readable reasons.
-- The operator should plan a probation window during which the bundle's live
+- [PROD] The `manifest.json` records `tiers_skipped` with human-readable reasons.
+- [PROD] The operator should plan a probation window during which the bundle's live
   performance is monitored before expanding its scope.
-- Additional manual gate approvals may be required during the probation window.
+- [PROD] Additional manual gate approvals may be required during the probation window.
 
-This policy is recorded in the manifest, not enforced in code (enforcement is an
+[PROD] This policy is recorded in the manifest, not enforced in code (enforcement is an
 operations configuration concern, not a commissioning concern).
 
 ---
@@ -188,7 +190,7 @@ The `report` dict structure:
 
 ## 5. Promote Gate
 
-`promote_activity` independently checks `validation.passed` before writing any
+[PROD] `promote_activity` independently checks `validation.passed` before writing any
 files. If `passed` is `False` it raises a non-retryable `ApplicationError`:
 
 ```
@@ -196,7 +198,7 @@ promote_activity: refusing to promote uncertified bundle
 '<bundle_id>' — validation failures: [...]
 ```
 
-This provides defence-in-depth: even if the workflow logic changes, an uncertified
+[PROD] This provides defence-in-depth: even if the workflow logic changes, an uncertified
 bundle cannot reach disk via the promote activity.
 
 ---
@@ -212,14 +214,14 @@ Block(
 )
 ```
 
-REVERSIBLE because validation is read-only analysis with no external side effects.
-`idempotent=True` because the activity is a pure function of its inputs.
+[PROD] REVERSIBLE because validation is read-only analysis with no external side effects.
+[PROD] `idempotent=True` because the activity is a pure function of its inputs.
 
 ---
 
 ## 7. Discipline Test Coverage
 
-The `test_discipline_correction` integration test (Phase D gate clause 3) exercises
+[DEV] The `test_discipline_correction` integration test (Phase D gate clause 3) exercises
 the full fault-detection path:
 
 1. `inject_fault=True` → round-0 dissect emits `transition_state: reversible`.
@@ -228,10 +230,10 @@ the full fault-detection path:
 3. `validate_activity` Tier 0 golden comparison fails: `"gates.by_tool missing
    'transition_state' (taxonomy says compensable/irreversible — golden requires
    approve-gated)"`.
-4. Workflow raises `ApplicationError` — the round-0 bundle is never promoted.
+4. [PROD] Workflow raises `ApplicationError` — the round-0 bundle is never promoted.
 5. Human reviewer calls `submit_correction`, dissect re-runs with `correction` applied.
 6. Round-1 bundle has correct `transition_state: compensable` → `by_tool` includes
    `transition_state: "approve"` → Tier 0 passes → promote succeeds.
 
-This path confirms that the validation ladder correctly catches the downstream effect
+[DEV] This path confirms that the validation ladder correctly catches the downstream effect
 of a wrong consequence classification.

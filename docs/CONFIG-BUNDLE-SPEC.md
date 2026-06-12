@@ -2,7 +2,7 @@
 
 **Status:** NORMATIVE. This document defines the authoritative on-disk layout and
 field schema for config bundles produced by the commissioning workflow. The golden
-reference implementation is `config/bundle-v0/`. All new bundles produced by
+reference implementation is `config/bundle-v0/`. [PROD] All new bundles produced by
 `promote_activity` must satisfy the schema defined here.
 
 ---
@@ -23,14 +23,14 @@ config/bundle-{operator_id}/
   manifest.json              # promote-time record (see §5)
 ```
 
-Software, config, and data stay separate (Invariant 6). Bundle files are written
+[PROD] Software, config, and data stay separate (Invariant 6). [PROD] Bundle files are written
 exclusively under `config/`, never under `harness/`.
 
 ---
 
 ## 2. Agent Object — 13 Required Fields
 
-Every file under `agents/` must contain exactly these fields (plus any operator-
+[PROD] Every file under `agents/` must contain exactly these fields (plus any operator-
 specific extensions, which are permitted as additional keys):
 
 | Field | Type | Description |
@@ -39,11 +39,11 @@ specific extensions, which are permitted as additional keys):
 | `department` | `str` | Functional department the agent belongs to, e.g. `"engage"`. |
 | `role` | `str` | Human-readable role description sentence. |
 | `objectives` | `list[str]` | Ordered list of behavioural objectives the agent pursues per run. |
-| `tool_allowlist` | `list[str]` | Open set of tool names the agent may call. New tools register via the capability registry; this list is updated in config, never by editing workflow code (Invariant 4). |
+| `tool_allowlist` | `list[str]` | [PROD] Open set of tool names the agent may call. New tools register via the capability registry; this list is updated in config, never by editing workflow code (Invariant 4). |
 | `autonomy_level` | `str` | Open string: `"gated"` requires gate evaluation before consequence-bearing actions; others may be added. |
 | `gates` | `dict` | Gate configuration object — see §2.1. |
 | `escalation_rules` | `dict` | Keys: `confidence_threshold` (float), `stall_after` (int steps), `escalate_to` (str). |
-| `model_policy` | `dict` | Role → model_id mapping — see §model_policy below. Values are opaque strings; no code above the infer contract names a model (Invariant 2). |
+| `model_policy` | `dict` | Role → model_id mapping — see §model_policy below. [PROD] Values are opaque strings; no code above the infer contract names a model (Invariant 2). |
 | `retrieval_budget` | `int` | Maximum context-retrieval operations per run. |
 | `step_budget` | `int` | Maximum agent loop steps per run. |
 | `token_budget` | `int` | Maximum tokens consumed per run. |
@@ -66,17 +66,25 @@ specific extensions, which are permitted as additional keys):
 
 Derivation rules (implemented in `construct_activity`):
 
-- `by_consequence_class` maps all three standard consequence classes. The mapping
+- [PROD] `by_consequence_class` maps all three standard consequence classes. The mapping
   is fixed: `reversible → "auto"`, `compensable → "approve"`, `irreversible → "approve"`.
-- `by_tool` contains **only tools whose consequence class is not "reversible"**.
+- [PROD] `by_tool` contains **only tools whose consequence class is not "reversible"**.
   `record_event` (reversible) is governed solely by `by_consequence_class` and does
   not appear in `by_tool`. This prevents redundancy and matches the bundle-v0 structure
   where only `transition_state` (compensable) appears.
-- During validation (Tier 0 golden comparison), all keys present in the golden
+- [PROD] During validation (Tier 0 golden comparison), all keys present in the golden
   `by_tool` must appear in the emitted bundle's `by_tool`. The emitted bundle may be a
   superset (more restrictive gating is acceptable; less restrictive is not).
 
 ### model_policy
+
+> **OUTDATED EXAMPLES — inference backend changed to API-only (2026-06).** The
+> `ollama_chat/...` values below are placeholder examples from the local-inference era
+> (Phase C/D bundle-v0) and are retained only to document the existing golden bundle.
+> API model IDs (e.g. `openai/gpt-4o-mini`) are the new target; new bundles should use
+> the configured API provider's LiteLLM model IDs. The grammar and guard allowlist are
+> being repointed accordingly. See `docs/PRINCIPLES.md` for the corrected [PROD]
+> inference principles.
 
 ```json
 {
@@ -85,22 +93,25 @@ Derivation rules (implemented in `construct_activity`):
 }
 ```
 
-**Grammar:** `model_id = "ollama/<name>" | "ollama_chat/<name>"`
+**Grammar (outdated — local-inference era):** `model_id = "ollama/<name>" | "ollama_chat/<name>"`
 
 - `ollama/<name>` — Ollama text-completion endpoint (legacy completions).
-- `ollama_chat/<name>` — Ollama chat-completions endpoint. Required for structured
-  outputs and tool-calling models. This is the prefix used by bundle-v0 and all
-  new bundles produced by commissioning.
+- `ollama_chat/<name>` — Ollama chat-completions endpoint. This is the prefix used by
+  bundle-v0. Both prefixes are superseded by API model IDs per the note above.
 
-Both prefixes route exclusively to local Ollama via LiteLLM. No cloud provider
-prefix is ever permitted. The `_guard_model_id()` function in
-`harness/shared/contracts/infer.py` enforces this allowlist at runtime.
+[PROD] Inference only via the `infer(model_id, messages, tools, policy)` contract; nothing
+above the contract names a model or provider (Invariant 2). [PROD] LiteLLM provides
+capability-addressed routing to a configured external API provider; no local model
+weights are required. The `_guard_model_id()` function in
+`harness/shared/contracts/infer.py` enforces the configured model-id allowlist at
+runtime (allowlist contents are config, repointed from `ollama*/` prefixes to API
+model IDs).
 
-**Small-model-first policy (CLAUDE.md):** `decide` tasks use the smallest reliable
-model (`llama3.2:3b`); escalation uses a larger model (`llama3.1:8b`) only when
-human-level judgment is required. Model choices are data (config), never code.
+[PROD] **Small-model-first policy (CLAUDE.md):** use the cheapest/smallest API model that
+meets the quality bar for each task; escalation uses a larger model only when
+human-level judgment is required. [PROD] Model choices are data (config), never code.
 
-**Liquid resolution:** The addition of `ollama_chat/` to the guard allowlist was a
+[DEV] **Liquid resolution:** The addition of `ollama_chat/` to the guard allowlist was a
 liquid that required founder approval. Resolution is recorded in
 `docs/LIQUID-RESOLUTIONS.md` ("infer guard prefix set").
 
@@ -108,7 +119,7 @@ liquid that required founder approval. Resolution is recorded in
 
 ## 3. Flow Object — 8 Required Fields
 
-Every file under `flows/` must contain exactly these fields:
+[PROD] Every file under `flows/` must contain exactly these fields:
 
 | Field | Type | Description |
 |---|---|---|
@@ -125,7 +136,7 @@ Every file under `flows/` must contain exactly these fields:
 
 ## 4. Vocab Files
 
-Every file under `vocab/` must follow this schema:
+[PROD] Every file under `vocab/` must follow this schema:
 
 ```json
 {
@@ -136,13 +147,13 @@ Every file under `vocab/` must follow this schema:
 
 Rules:
 
-- `_note` is mandatory and must start with the prefix `"Open set — append never edit."`.
+- [PROD] `_note` is mandatory and must start with the prefix `"Open set — append never edit."`.
   Additional clarification may follow (e.g. `"States used in lead_lifecycle state machine."`).
   Validation uses prefix-match, not exact-match.
-- At least one additional list-valued key must be present.
+- [PROD] At least one additional list-valued key must be present.
 - The key name for the list should match the vocab category (e.g. `stages`, `task_types`,
   `channels`).
-- The vocab key set itself is open: new categories are added as new files, never by editing
+- [PROD] The vocab key set itself is open: new categories are added as new files, never by editing
   existing files (Invariant 3).
 
 ### Standard Vocab Categories (bundle-v0 baseline)
@@ -192,7 +203,7 @@ always include it.
 
 ## 6. policy Keys (infer contract)
 
-The `policy` field of `InferInput` accepts the following known keys. Unknown keys
+The `policy` field of `InferInput` accepts the following known keys. [PROD] Unknown keys
 are warned about but not rejected (open-set invariant, Invariant 3).
 
 | Key | Type | Constraint | Default |
@@ -209,7 +220,7 @@ produce a warning log entry from `validate_policy()`.
 ## 7. Archetype Catalogue
 
 Archetype names are registered in the `_ARCHETYPE_TEMPLATES` dict in
-`harness/commissioning/activities/construct.py`. The dict is an open set;
+`harness/commissioning/activities/construct.py`. [PROD] The dict is an open set;
 new archetypes are appended, existing entries are never edited.
 
 | Archetype | Description |
@@ -220,10 +231,10 @@ new archetypes are appended, existing entries are never edited.
 
 ## 8. Versioning and Promotion
 
-- A bundle produced by commissioning always has `version: "0"` in its agent object.
+- [PROD] A bundle produced by commissioning always has `version: "0"` in its agent object.
   Version bumps are made by re-commissioning (config change → re-run the workflow).
 - `promote_activity` writes to `{output_root}/bundle-{operator_id}/`. If a bundle
   already exists it is overwritten in-place (idempotent).
-- Auto-promote (`CommissioningInput.auto_promote=True`) is only used in test fixtures
-  as a stand-in for "explicit written policy". Production workflows wait for the
+- [PROD] Auto-promote (`CommissioningInput.auto_promote=True`) is only used in test fixtures
+  as a stand-in for "explicit written policy". [PROD] Production workflows wait for the
   `approve_promote` signal (one human click, per CLAUDE.md).

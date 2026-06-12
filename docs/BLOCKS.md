@@ -16,7 +16,7 @@ Each block in the harness carries the following metadata fields, defined in
 | `consequence_class` | `str` | Reversibility classification (see below) |
 | `version` | `str` | SemVer pin for this block definition |
 
-`compensation_handler` is deliberately absent in Phase B. Doc 12 §8 requires
+[PROD] `compensation_handler` is deliberately absent in Phase B. Doc 12 §8 requires
 a handler **only "where compensable"** — no Phase B block is compensable (all
 are `reversible`), so the clause is not triggered. This field is a Phase C
 liquid, arriving with the first block that performs external/irreversible
@@ -25,14 +25,14 @@ actuation (send-message, charge).
 
 ## Consequence classes
 
-All five Phase B verbs are `consequence_class = reversible`. This is the honest
+[PROD] All five Phase B verbs are `consequence_class = reversible`. This is the honest
 classification: every verb is a side-effect-free INSERT into the business
 Postgres with **no external actuation** (no email, payment, or irreversible
 outside effect). The effect is cleanly undoable — nothing in the world has
-consumed it. Consequence class classifies the **reversibility of the effect**,
+consumed it. [PROD] Consequence class classifies the **reversibility of the effect**,
 not the storage auditability of the write.
 
-Note on `transition_state`: the state table is **append-only** (each transition
+[PROD] Note on `transition_state`: the state table is **append-only** (each transition
 inserts a new row; no UPDATE-in-place). This is an **audit discipline** choice,
 not a consequence-class signal. Append-only preserves history so Phase C's
 "replay audit reads true" gate (Doc 12 §9) can be satisfied. But the effect of
@@ -61,21 +61,21 @@ Temporal's default data converter without a Pydantic converter or SDK bump.
 The tool registry (`harness/shared/capability/registry.py`) is a module-level
 singleton dict keyed by block name. Rules:
 
-1. **Additive only.** A registered block is never edited or deleted; new
+1. [PROD] **Additive only.** A registered block is never edited or deleted; new
    capabilities register new blocks. The registry name is permanent.
-2. **Idempotent re-registration.** `register(block)` is reentrant: re-importing
+2. [PROD] **Idempotent re-registration.** `register(block)` is reentrant: re-importing
    a block module (e.g. during Temporal sandbox reload) is a no-op if the
    metadata is identical. Registering the same name with different metadata raises.
-3. **Metadata only.** The registry holds `Block` metadata objects — never the
+3. [PROD] **Metadata only.** The registry holds `Block` metadata objects — never the
    activity callables, never asyncpg. It is safe to reference from workflow-side
    code without sandbox contamination.
-4. **Populated in worker scope.** Block registration happens at import time in
+4. [PROD] **Populated in worker scope.** Block registration happens at import time in
    `verbs.py`, which is imported by `worker.py`. The workflow discovers blocks by
    string name; it is never edited to add a new block.
 
-**Additive rule as CI policy:** any PR that modifies an existing entry in
+[DEV] **Additive rule as CI policy:** any PR that modifies an existing entry in
 `_registry` (changes block name, I/O type, consequence class) fails review.
-New blocks extend the catalog; existing blocks are immutable.
+[PROD] New blocks extend the catalog; existing blocks are immutable.
 
 ## By-hand closure check — Intake molecule
 
