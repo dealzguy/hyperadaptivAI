@@ -72,6 +72,8 @@ Three ordering decisions shape the sequence, each derived from the architecture 
 
 ## Phase E — MVP: the first real deployment
 
+**Status (2026-06-12).** Buildable machinery complete and smoke-tested: inference-API refactor (W0), consequence gate + workflow versioning (W1/W2), CRM spine persistence (W3), operator CLI (W4), flow-class pause (W5), docs/liquids (W7). Live operator deployment pending — exit gate requires real operator engagement (see below).
+
 **Objective.** The first warm-network operator commissioned, deployed, in probation, paying. This phase is performed, not just built — and the performing is the evidence-harvest the whole liquid map has been waiting for.
 
 **Build / perform.** Host prep on the operator's ground. Real commissioning: the actual interview, their actual corpus, their archetype (order/delivery, project/milestone, or policy/coverage — whichever contact closes first). Promote, probation with gates on. The minimal operator surface: queue, item viewer, approve/edit/send, pause, digest. Liquids resolved from observation and recorded with their evidence: memory taxonomy v1 from the real corpus; pod packing and the Supabase-under-Podman lean profile per this host; rootless-vs-GPU resolution; manifest format decision (Quadlet vs. compose, now observed); monitoring stack selection. Delegated-expiring authority exercised and visibly transferred at handover.

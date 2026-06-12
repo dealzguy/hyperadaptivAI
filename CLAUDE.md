@@ -8,7 +8,7 @@ HyperadaptivAI is a Temporal-based distributed system for adaptive AI agents wit
 
 ## Current phase
 
-Phase E — consequence gate + inference-API refactor — in progress. See `docs/13-build-roadmap.md` §Phase E for exit gates.
+Phase E — buildable machinery complete (smoke-tested 2026-06-12); live operator deployment pending (exit gate requires real operator engagement). See `docs/13-build-roadmap.md` §Phase E for exit gates.
 
 ## Planned Stack
 
