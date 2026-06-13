@@ -109,7 +109,7 @@ no file in `shared/` may import from `harness/operations/` or `harness/commissio
 
 | File | What it IS | Touch when |
 |------|-----------|-----------|
-| `operations/operator_cli.py` | CLI for human operators. Commands: list, list-queue, show, approve, reject, pause, resume, digest, run, info. Connects to Temporal + asyncpg. `TEMPORAL_HOST` and `DB_PORT` from env. | Adding a new CLI command (additive). Never change existing command signatures or output format without updating `docs/GATE.md`. |
+| `operations/operator_cli.py` | CLI for human operators. Commands: `list-gates`, `show-gate`, `approve`, `reject`, `edit`, `pause`, `resume`, `pause-flow`, `resume-flow`, `digest`. Connects to Temporal + asyncpg. `TEMPORAL_HOST`, `DB_PORT`, `POSTGRES_USER`, `POSTGRES_DB` from env. **Always `set -a && source secrets.env && set +a`** before running — plain `source` without `set -a` creates shell vars Python can't read. | Adding a new CLI command (additive). Never change existing command signatures or output format without updating `docs/GATE.md`. |
 
 **Read before touching:** `docs/GATE.md` (signal protocol, positional args).
 

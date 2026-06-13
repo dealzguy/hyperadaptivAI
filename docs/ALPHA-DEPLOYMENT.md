@@ -103,27 +103,48 @@ ssh -N -L 8233:localhost:8233 -L 7233:localhost:7233 \
 
 ## Operator CLI usage (on VPS)
 
+**Critical:** `source secrets.env` without `export` creates shell variables, NOT env vars — Python
+`os.environ` won't see them. Always use `set -a` before sourcing:
+
 ```bash
 # SSH to VPS, then:
 cd /opt/harness
 source venv/bin/activate
-source deploy/secrets/secrets.env
+set -a && source deploy/secrets/secrets.env && set +a
 
-# List running agent-loop workflows
-python3 harness/operations/operator_cli.py list
+# List all pending gate approvals
+python3 harness/operations/operator_cli.py list-gates
 
-# List pending gate approvals
-python3 harness/operations/operator_cli.py list-queue
-
-# Today's activity digest
-python3 harness/operations/operator_cli.py digest
+# Show one gate task in detail
+python3 harness/operations/operator_cli.py show-gate <decision_id>
 
 # Approve a gate decision
 python3 harness/operations/operator_cli.py approve <decision_id>
 
-# Start a workflow (dev test)
-python3 harness/operations/operator_cli.py run <agent_id> <entity_id> <flow_id>
+# Reject a gate decision
+python3 harness/operations/operator_cli.py reject <decision_id>
+
+# Edit and approve with a modified action
+python3 harness/operations/operator_cli.py edit <decision_id>
+
+# Pause a specific workflow instance
+python3 harness/operations/operator_cli.py pause <workflow_id>
+
+# Resume a specific workflow instance
+python3 harness/operations/operator_cli.py resume <workflow_id>
+
+# Pause ALL instances of a flow class
+python3 harness/operations/operator_cli.py pause-flow <flow_class>
+
+# Resume ALL instances of a flow class
+python3 harness/operations/operator_cli.py resume-flow <flow_class>
+
+# Today's activity digest (transitions / completions / waiting gates)
+python3 harness/operations/operator_cli.py digest
 ```
+
+Complete command list: `list-gates`, `show-gate`, `approve`, `reject`, `edit`, `pause`, `resume`,
+`pause-flow`, `resume-flow`, `digest`.
 
 ---
 
@@ -184,7 +205,8 @@ nohup temporal server start-dev --port 7233 --ui-port 8233 --namespace default \
 echo $! > /tmp/temporal-dev.pid
 
 # 3. Run bootstrap (safe to re-run — idempotent)
-cd /opt/harness && source venv/bin/activate && source deploy/secrets/secrets.env
+# NOTE: set -a auto-exports all vars from secrets.env so Python os.environ sees them
+cd /opt/harness && source venv/bin/activate && set -a && source deploy/secrets/secrets.env && set +a
 python3 -m harness.shared.persistence.bootstrap
 
 # 4. Start worker
@@ -193,6 +215,19 @@ echo $! > /tmp/harness-worker.pid
 ```
 
 ---
+
+## Known issues (diagnose first on next SSH access)
+
+- **Nginx down** — was running before workflow deployment; now HTTP 000 on port 80. Likely cause:
+  `harness.prlwarehouse.com` vhost had a config error (`proxy_pass` to a unix socket that doesn't
+  exist, or malformed config). Diagnose: `nginx -t` to find config errors; if vhost is broken,
+  remove `/etc/nginx/sites-enabled/harness.prlwarehouse.com` and reload.
+- **SSH refusing** — likely fail2ban re-banned `37.19.210.213` after ControlMaster expired.
+  Fix via Hostinger web console: `fail2ban-client unban 37.19.210.183`
+- **CLI digest fails** — `POSTGRES_USER` empty → asyncpg auth error. Fix is documented above:
+  `set -a && source deploy/secrets/secrets.env && set +a` before running CLI.
+- **Worker status unknown** — SSH dropped before confirming; check `cat /tmp/harness-worker.pid`
+  and `tail /var/log/harness-worker.log` on next access.
 
 ## Open items (Phase F)
 
