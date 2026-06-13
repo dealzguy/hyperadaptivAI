@@ -26,10 +26,16 @@ Phase E — buildable machinery complete (smoke-tested 2026-06-12); live operato
 Always **enter plan mode before Phase A work** (`claude --permission-mode plan` or Shift+Tab twice until footer reads "plan mode"). Submit the contents of `claude-code-kickoff-prompt.md` as the first message.
 
 Reference documents live under `docs/`:
+- `docs/CODEBASE-MAP.md` — **read this first in any new session** — every file's purpose, what to touch vs. not, anti-overwrite checklist
+- `docs/13-build-roadmap.md` — phase gate criteria and current phase status
+- `docs/ALPHA-DEPLOYMENT.md` — VPS dev-server deployment: topology, access, restart runbook, open items
 - `docs/08-software-licensing-reference.md` — license constraints (MIT/Apache-2.0 preferred; flag anything else)
 - `docs/11-stack-architecture.md` — technical stack decisions
 - `docs/12-initial-build-prompt.md` — Phase A build specification (read in full before planning)
-- `docs/13-build-roadmap.md` — phase gate criteria
+- `docs/LIQUID-RESOLUTIONS.md` — open and resolved decisions; resolve none silently
+- `docs/GATE.md` — consequence gate design, signal protocol, operator CLI args
+- `docs/VERSIONING.md` — Temporal patched() discipline; read before touching agent_loop.py
+- `docs/BLOCKS.md` — capability registry; add new blocks here when registering activities
 
 ## Key Constraints
 
