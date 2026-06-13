@@ -216,25 +216,26 @@ echo $! > /tmp/harness-worker.pid
 
 ---
 
-## Known issues (diagnose first on next SSH access)
+## Deployment state (confirmed 2026-06-12)
 
-- **Nginx down** — was running before workflow deployment; now HTTP 000 on port 80. Likely cause:
-  `harness.prlwarehouse.com` vhost had a config error (`proxy_pass` to a unix socket that doesn't
-  exist, or malformed config). Diagnose: `nginx -t` to find config errors; if vhost is broken,
-  remove `/etc/nginx/sites-enabled/harness.prlwarehouse.com` and reload.
-- **SSH refusing** — likely fail2ban re-banned `37.19.210.213` after ControlMaster expired.
-  Fix via Hostinger web console: `fail2ban-client unban 37.19.210.183`
-- **CLI digest fails** — `POSTGRES_USER` empty → asyncpg auth error. Fix is documented above:
-  `set -a && source deploy/secrets/secrets.env && set +a` before running CLI.
-- **Worker status unknown** — SSH dropped before confirming; check `cat /tmp/harness-worker.pid`
-  and `tail /var/log/harness-worker.log` on next access.
+All services confirmed UP and working:
+
+| Service | Status | Notes |
+|---------|--------|-------|
+| Temporal dev server | UP — port 7233/8233 | HTTP 200 on 8233 |
+| harness-postgres | UP — 127.0.0.1:5433 | Podman container `deploy_postgres-business_1`, healthy |
+| harness.worker | UP — PID at `/tmp/harness-worker.pid` | Task queue: skeleton-queue |
+| nginx | UP — 80/443 | Config valid; vhost created at `/etc/nginx/sites-available/harness.prlwarehouse.com` |
+| harness.prlwarehouse.com | HTTPS 200 via CF proxy | TLS cert: Let's Encrypt, expires 2026-09-11 |
+| operator CLI `digest` | Working | Confirmed: 0 gates, 0 active workflows |
+| Backup | Complete | 887MB at `/root/vps-backup-2026-06-12/` |
 
 ## Open items (Phase F)
 
 - [ ] Pin `litellm` to exact version used in this deployment (open liquid in `LIQUID-RESOLUTIONS.md`)
 - [ ] Systemd service units for Temporal dev server and harness worker (survive reboots)
-- [ ] Certbot for `harness.prlwarehouse.com` (run after DNS propagation, ~5 min after CF record created)
-- [ ] Enable CF proxy (orange cloud) on `harness.prlwarehouse.com` after certbot
+- [x] Certbot for `harness.prlwarehouse.com` — DONE (cert expires 2026-09-11)
+- [x] Enable CF proxy (orange cloud) on `harness.prlwarehouse.com` — DONE
 - [ ] Audit-log operator verdicts to `event` table (P1-8 from Phase E supervisor review)
 - [ ] Token budget undercount on gate-reject/timeout paths (P1-5)
 - [ ] Close stale gate task rows on workflow timeout/end
