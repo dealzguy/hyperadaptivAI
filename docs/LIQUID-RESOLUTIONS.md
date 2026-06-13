@@ -82,9 +82,10 @@ whether the first real deployment warrants queue separation.
 
 ## Phase-A SDK pins
 
-**Status:** OPEN (litellm)  
+**Status:** RESOLVED  
 **Phase:** A  
 **Date:** 2026-06-11  
+**Date resolved:** 2026-06-12  
 **Recorded by:** Phase E (Coder-E, W7)  
 **Updated:** 2026-06-12 (supervisor doc review — corrected versions from pyproject.toml)
 
@@ -98,6 +99,10 @@ whether the first real deployment warrants queue separation.
 [DEV] The version-pin convention (CLAUDE.md) requires pinning before production deployment.
 Resolve by: selecting and pinning the specific version used in the first live deployment
 (e.g. `litellm==<version>`), then updating this entry to RESOLVED.
+
+**Resolution:** Pinned to litellm==1.83.0 — the version installed on VPS during Phase E live
+deployment (2026-06-12). Evidence: pip show litellm on VPS returned Version: 1.83.0.
+Founder approval: granted (Phase E hardening, 2026-06-12).
 
 **Evidence:** `pyproject.toml` dependencies block.
 

@@ -5,7 +5,7 @@ requires-python = ">=3.10"  # 3.12 target per CLAUDE.md; CI host provides 3.10
 dependencies = [
     "temporalio==1.9.0",
     "asyncpg==0.30.0",  # MIT — green tier; async Postgres driver
-    "litellm>=1.0,<2",  # MIT — LLM router, routes to configured external API provider
+    "litellm==1.83.0",  # MIT — pinned to version deployed on VPS 2026-06-12
     "httpx==0.25.2",    # BSD-3-Clause — HTTP client, used by litellm
 ]
 
